@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getUserLocation } from '../lib/location.ts'
 import { computePrayerTimes, nextPrayer } from '../lib/prayer'
 import PrayerMonth from './PrayerMonth.tsx'

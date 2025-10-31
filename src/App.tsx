@@ -45,7 +45,7 @@ export default function App() {
         {tab === 'Privacy' && <Privacy />}
         {tab === 'Vision' && <Vision />}
         {tab === 'NeedHelp' && <NeedHelp />}
-        {tab === 'Home' && <Home go={(t) => setTab(t)} />}
+{tab === 'Home' && <Home go={(t: string) => setTab(t === 'Help' ? 'NeedHelp' : t as TabName)} />}
       </main>
 
       <nav className="flex justify-around bg-gray-800 p-2">

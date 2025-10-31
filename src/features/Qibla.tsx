@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getUserLocation } from '../lib/location'
 function bearingToKaaba(lat:number, lon:number){
   const K={ lat:21.4225, lon:39.8262 }
