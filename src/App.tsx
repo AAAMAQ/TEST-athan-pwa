@@ -5,11 +5,30 @@ import Qibla from './features/Qibla'
 import Quran from './features/Quran'
 import Settings from './features/Settings'
 import Home from './features/Home'
+import Credits from './features/Credits'
+import Privacy from './features/Privacy'
+import Vision from './features/Vision'
+import NeedHelp from './features/NeedHelp'
 
-const tabs = ['Home','Prayer', 'Qibla', 'Quran', 'Settings'] as const
+// near your tab definitions in App.tsx
+const tabs = [
+  'Home',
+  'Prayer',
+  'Qibla',
+  'Quran',
+  'Settings',
+  'Credits',
+  'Privacy',
+  'Vision',
+  'NeedHelp',
+  'SalahTracker',
+  'PrayerMonth'
+] as const
+
+export type TabName = typeof tabs[number]
 
 export default function App() {
-  const [tab, setTab] = useState<typeof tabs[number]>('Prayer')
+  const [tab, setTab] = useState<TabName>('Prayer')
 
   return (
     <div className="flex flex-col h-full">
@@ -22,6 +41,10 @@ export default function App() {
         {tab === 'Qibla' && <Qibla />}
         {tab === 'Quran' && <Quran />}
         {tab === 'Settings' && <Settings />}
+        {tab === 'Credits' && <Credits />}
+        {tab === 'Privacy' && <Privacy />}
+        {tab === 'Vision' && <Vision />}
+        {tab === 'NeedHelp' && <NeedHelp />}
         {tab === 'Home' && <Home go={(t) => setTab(t)} />}
       </main>
 
