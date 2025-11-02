@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react'
 import { fetchSurahs, fetchSurah } from '../lib/quran'
-type SurahItem = { number:number; name:string; englishName:string; englishNameTranslation:string; numberOfAyahs:number }
-type ViewMode = 'ar' | 'ar-en'
+
+// Local view types (UI only)
+type SurahItem = {
+  number: number
+  name: string
+  englishName: string
+  englishNameTranslation: string
+  numberOfAyahs: number
+}
 
 type Ayah = { number: number; text: string }
+
+type ViewMode = 'ar' | 'ar-en'
+
 const BK_KEY = 'quranBookmarks'
 const FS_KEY = 'quranFontPct'
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
@@ -18,6 +28,7 @@ export default function Quran(){
   const [selected,setSelected]=useState<number| null>(1)
   const [arabic,setArabic]=useState<Ayah[]>([])
   const [english,setEnglish]=useState<Ayah[]>([])
+  const [bismillah,setBismillah]=useState<string | null>(null)
   const [loading,setLoading]=useState(false)
   const [edition,setEdition]=useState('en.asad')
   const [mode,setMode]=useState<ViewMode>(() => (localStorage.getItem('quranViewMode') as ViewMode) || 'ar-en')
@@ -33,7 +44,7 @@ export default function Quran(){
   useEffect(()=>{ localStorage.setItem(FS_KEY, String(fontPct)) },[fontPct])
 
   useEffect(()=>{(async()=>{ setSurahs(await fetchSurahs()) })()},[])
-  useEffect(()=>{ if(!selected) return; setLoading(true); fetchSurah(selected,edition).then(r=>{ setArabic(r.arabic); setEnglish(r.english) }).finally(()=>setLoading(false)) },[selected,edition])
+  useEffect(()=>{ if(!selected) return; setLoading(true); fetchSurah(selected,edition).then(r=>{ setArabic(r.arabic); setEnglish(r.english); setBismillah(r.bismillah ?? null) }).finally(()=>setLoading(false)) },[selected,edition])
 
   const isBookmarked = (s: number, a: number) => bookmarks.has(keyFor(s,a))
   const toggleBookmark = (s: number, a: number) => {
@@ -85,7 +96,9 @@ export default function Quran(){
       </div>
       <div className="flex gap-2 justify-center">
         <select className="text-black" value={selected ?? 1} onChange={e=>setSelected(parseInt(e.target.value))}>
-          {surahs.map(s=><option key={s.number} value={s.number}>{s.number}. {s.englishName} — {s.name} ({s.numberOfAyahs})</option>)}
+          {surahs.map(s=>
+            <option key={s.number} value={s.number}>{s.number}. {s.englishName} — {s.name} ({s.numberOfAyahs})</option>
+          )}
         </select>
         {mode==='ar-en' && (
           <select className="text-black" value={edition} onChange={e=>setEdition(e.target.value)}>
@@ -102,7 +115,12 @@ export default function Quran(){
             <div>
               <h3 className="font-semibold mb-2 text-teal-300">Arabic</h3>
               <div className="space-y-2 leading-8 text-lg" style={{ fontSize: `${fontPct}%` }}>
-                {(showOnlyBookmarks ? arabic.filter(a=>isBookmarked(selected!, a.number)) : arabic).map(a=>(
+                {bismillah && (
+                  <p dir="rtl" className="text-center text-xl leading-8 mb-2" style={{ fontSize: `${fontPct}%` }}>
+                    {bismillah}
+                  </p>
+                )}
+                {(showOnlyBookmarks ? arabic.filter(a=>isBookmarked(selected!, a.number)) : arabic).map(a=> (
                   <p key={a.number} dir="rtl" className="flex items-start gap-2">
                     <button
                       aria-label="Bookmark ayah"
@@ -125,7 +143,12 @@ export default function Quran(){
               <div>
                 <h3 className="font-semibold mb-2 text-teal-300">Arabic</h3>
                 <div className="space-y-2 leading-8 text-lg" style={{ fontSize: `${fontPct}%` }}>
-                  {(showOnlyBookmarks ? arabic.filter(a=>isBookmarked(selected!, a.number)) : arabic).map(a=>(
+                  {bismillah && (
+                    <p dir="rtl" className="text-center text-xl leading-8 mb-2" style={{ fontSize: `${fontPct}%` }}>
+                      {bismillah}
+                    </p>
+                  )}
+                  {(showOnlyBookmarks ? arabic.filter(a=>isBookmarked(selected!, a.number)) : arabic).map(a=> (
                     <p key={a.number} dir="rtl" className="flex items-start gap-2">
                       <button
                         aria-label="Bookmark ayah"
@@ -145,7 +168,7 @@ export default function Quran(){
               <div>
                 <h3 className="font-semibold mb-2 text-teal-300">English</h3>
                 <div className="space-y-3" style={{ fontSize: `${fontPct}%` }}>
-                  {(showOnlyBookmarks ? english.filter(e=>isBookmarked(selected!, e.number)) : english).map(e=>(
+                  {(showOnlyBookmarks ? english.filter(e=>isBookmarked(selected!, e.number)) : english).map(e=> (
                     <p key={e.number} className="flex items-start gap-2">
                       <button
                         aria-label="Bookmark ayah"

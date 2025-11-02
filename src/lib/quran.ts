@@ -38,11 +38,15 @@ function stripLeadingBasmala(text: string): { bismillah?: string; rest: string }
   const trimmed = text.replace(/^\uFEFF/, '').trim()
   for (const v of BASMALA_VARIANTS) {
     if (trimmed.startsWith(v)) {
-      const rest = trimmed.slice(v.length).replace(/^\s*[–—-]?\s*/, '').trim()
+      let rest = trimmed.slice(v.length).replace(/^\s*[–—-]?\s*/, '').trim()
+      // Ensure a visual break between Basmala and the first ayah text
+      if (rest && !rest.startsWith('\n')) {
+        rest = `\n${rest}`
+      }
       return { bismillah: v, rest }
     }
   }
-  return { rest: text }
+  return { rest: trimmed }
 }
 
 function setCache<T>(k: string, v: T) { localStorage.setItem(k, JSON.stringify({ t: Date.now(), v })) }

@@ -1,15 +1,14 @@
 // src/features/Home.tsx
 import { useEffect, useState } from 'react'
+import type { Screen } from '../types/nav'
 import { formatHijri } from '../lib/hijri'
 import { getUserLocation } from '../lib/location'
 import { computePrayerTimes, nextPrayer } from '../lib/prayer'
 
 
-type TabName = 'Home' | 'Prayer' | 'Qibla' | 'Quran' | 'Settings' | 'Credits' | 'Privacy' | 'Help' | 'SalahTracker'| 'PrayerMonth'
-
 const fmtTime = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-export default function Home({ go }: { go: (tab: TabName) => void }) {
+export default function Home({ go }: { go: (tab: Screen) => void }) {
   const [hijri, setHijri] = useState(formatHijri())
   const [next, setNext] = useState<{ name: string; time: Date } | null>(null)
   const [nextAt, setNextAt] = useState<string>('') // human local time for next prayer
@@ -55,27 +54,6 @@ export default function Home({ go }: { go: (tab: TabName) => void }) {
     return () => clearInterval(id)
   }, [next])
 
-  // Web Share with clipboard fallback (typed to avoid TS errors)
-  function shareApp() {
-    const nav = navigator as Navigator & {
-      share?: (data: { title?: string; text?: string; url?: string }) => Promise<void>
-      clipboard?: Clipboard
-    }
-    const shareData = {
-      title: 'Athan App',
-      text: 'Check out this offline-first Athan PWA!',
-      url: window.location.origin
-    }
-    if (nav.share) {
-      nav.share(shareData).catch(() => {})
-    } else {
-      nav.clipboard?.writeText(shareData.url).then(
-        () => alert('Link copied!'),
-        () => alert(shareData.url)
-      )
-    }
-  }
-
   // simple hard-nav for static pages (no router required)
  // const goPath = (path: string) => { window.location.href = path }
 
@@ -100,34 +78,12 @@ export default function Home({ go }: { go: (tab: TabName) => void }) {
         </div>
       </div>
 
-      {/* Buttons Grid (even layout; Need Help moved to bottom beside Share) */}
-      <div className="grid grid-cols-2 gap-3">
-        <HomeButton label="Prayer Times" onClick={() => go('Prayer')} />
-        <HomeButton label="Qibla" onClick={() => go('Qibla')} />
-        <HomeButton label="Settings" onClick={() => go('Settings')} />
+      {/* Simple vertical actions */}
+      <div className="space-y-3">
         <HomeButton label="Quran" onClick={() => go('Quran')} />
+        <HomeButton label="Qibla" onClick={() => go('Qibla')} />
         <HomeButton label="Track Salah" onClick={() => go('SalahTracker')} />
-        <HomeButton label="Prayer (Month)" onClick={() => go('PrayerMonth')} />
         <HomeButton label="Credits" onClick={() => go('Credits')} />
-        <HomeButton label="Privacy Policy" onClick={() => go('Privacy')} />
-      </div>
-
-      {/* Bottom actions: Need Help (FAQ) + Share App */}
-      <div className="flex items-center justify-center gap-3">
-        <button
-          onClick={() => go('Help')}
-          className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600"
-          title="FAQ and tips"
-        >
-          Need Help
-        </button>
-        <button
-          onClick={shareApp}
-          className="px-4 py-2 rounded bg-teal-600 hover:bg-teal-500"
-          title="Share or copy the app link"
-        >
-          Share App
-        </button>
       </div>
     </div>
   )
