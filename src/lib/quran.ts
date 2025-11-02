@@ -19,10 +19,31 @@ async function getJSON<T>(url: string): Promise<T> {
 }
 type Surah = { number: number; name: string; englishName: string; englishNameTranslation: string; numberOfAyahs: number }
 type Ayah = { number: number; text: string }
-type SurahContent = { arabic: Ayah[]; english: Ayah[] }
+type SurahContent = { arabic: Ayah[]; english: Ayah[]; bismillah?: string }
 const API = 'https://api.alquran.cloud/v1'
 const K_SURAH_LIST = 'quran_surahs_v1'
 const K_SURAH_PREFIX = 'quran_surah_v1_' // + number + '_' + edition
+
+// Uthmani basmala variants that may appear at the start of ayah 1
+const BASMALA_VARIANTS = [
+  'بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ',
+  'بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيمِ',
+  'بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيمِ',
+  'بِسْمِ ٱللّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ',
+  'بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيمِ',
+  'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'
+]
+
+function stripLeadingBasmala(text: string): { bismillah?: string; rest: string } {
+  const trimmed = text.replace(/^\uFEFF/, '').trim()
+  for (const v of BASMALA_VARIANTS) {
+    if (trimmed.startsWith(v)) {
+      const rest = trimmed.slice(v.length).replace(/^\s*[–—-]?\s*/, '').trim()
+      return { bismillah: v, rest }
+    }
+  }
+  return { rest: text }
+}
 
 function setCache<T>(k: string, v: T) { localStorage.setItem(k, JSON.stringify({ t: Date.now(), v })) }
 function getCache<T>(k: string, maxAge = 1000*60*60*24*30): T | null {
@@ -50,7 +71,21 @@ export async function fetchSurah(number: number, edition = 'en.asad'): Promise<S
   const arabic: Ayah[] = aj.data.ayahs.map(toAyah);
   const english: Ayah[] = ej.data.ayahs.map(toAyah);
 
-  const payload: SurahContent = { arabic, english };
+  // Separate Basmala for all surahs except 9. For Surah 1, keep ayah[0] as-is (it is ayah 1),
+  // but also expose a `bismillah` field for UI headers if desired.
+  let bismillah: string | undefined
+  if (number !== 9 && arabic.length > 0) {
+    const { bismillah: b, rest } = stripLeadingBasmala(arabic[0].text)
+    if (b) {
+      bismillah = b
+      // For all surahs except 1, if Basmala is prefixed to the first ayah, remove it from the ayah text
+      if (number !== 1) {
+        arabic[0] = { ...arabic[0], text: rest || arabic[0].text }
+      }
+    }
+  }
+
+  const payload: SurahContent = bismillah ? { arabic, english, bismillah } : { arabic, english }
   setCache(key, payload);
   return payload;
 }
