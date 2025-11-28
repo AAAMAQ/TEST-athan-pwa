@@ -14,6 +14,7 @@ import { buildIcsForDates, downloadICS } from '../lib/ics'
 const METHODS: MethodKey[] = ['MuslimWorldLeague','UmmAlQura','Egyptian','Karachi','Dubai','Qatar','Kuwait','MoonsightingCommittee','NorthAmerica','Singapore','Tehran','Turkey']
 const MADHABS: MadhabKey[] = ['Shafi','Hanafi']
 const HIGHLATS: HighLatKey[] = ['MiddleOfTheNight','SeventhOfTheNight','TwilightAngle']
+const REMINDER_OFFSETS: number[] = [5, 10, 15, 20, 30, 45, 50]
 
 const LS_OFFSET = 'reminderOffsetMin'
 const LS_ISHA_FIXED = 'ishaFixedTime'
@@ -90,13 +91,30 @@ export default function Settings(){
         <div className="flex flex-wrap items-end gap-4">
           <div>
             <label className="block text-sm text-gray-300">Reminder offset (minutes before each prayer)</label>
-            <input
-              className="text-black px-2 py-1 rounded w-28"
-              type="number"
-              min={1}
-              value={offsetMin}
-              onChange={e => setOffsetMin(Math.max(1, parseInt(e.target.value || '20', 10)))}
-            />
+            <div className="flex items-center gap-2 mt-1">
+              <select
+                className="text-black px-2 py-1 rounded w-32"
+                value={offsetMin}
+                onChange={e => setOffsetMin(Math.max(1, parseInt(e.target.value || '20', 10)))}
+              >
+                {REMINDER_OFFSETS.map(v => (
+                  <option key={v} value={v}>
+                    {v} minutes
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  // Explicitly persist and confirm the current reminder offset
+                  localStorage.setItem(LS_OFFSET, String(Math.max(1, offsetMin)));
+                  setMsg(`Reminder offset updated to ${offsetMin} minutes before each prayer.`);
+                }}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-sm"
+              >
+                Update reminder
+              </button>
+            </div>
             <p className="text-xs text-gray-400 mt-1">
               This offset is applied before each prayer time when we generate the .ics file.
             </p>
