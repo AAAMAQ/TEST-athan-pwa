@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { computePrayerTimes } from '../lib/prayer'
 import { getUserLocation } from '../lib/location'
 
-type PrayerKey = 'Fajr' | 'Dhuhr' | 'Asr' | 'Maghrib' | 'Isha' | 'Witr'
-const PRAYERS: PrayerKey[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Witr'] as const
+type PrayerKey = 'Fajr' | 'Dhuhr' | 'Asr' | 'Maghrib' | 'Isha' 
+const PRAYERS: PrayerKey[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', ] as const
 
 type DayLog = Partial<Record<PrayerKey, boolean>>
 type LogStore = Record<string, DayLog> // key: YYYY-MM-DD
@@ -160,7 +160,7 @@ export default function SalahTracker() {
               title={`${d.toDateString()} • ${n}/6`}
             >
               <div className="text-[10px]">{d.getDate()}</div>
-              <div className="text-[10px]">{n}/6</div>
+              <div className="text-[10px]">{n}/5</div>
             </button>
           )
         })}
@@ -173,7 +173,7 @@ export default function SalahTracker() {
             <div className="text-sm text-gray-300">Selected day</div>
             <div className="text-lg font-semibold">{selectedLabel}</div>
           </div>
-          <div className="text-sm text-gray-300">{selectedScore}/6 completed</div>
+          <div className="text-sm text-gray-300">{selectedScore}/5 completed</div>
         </div>
 
         {/* Optional today times if the selected date is today */}

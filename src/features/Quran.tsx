@@ -44,7 +44,38 @@ export default function Quran(){
   useEffect(()=>{ localStorage.setItem(FS_KEY, String(fontPct)) },[fontPct])
 
   useEffect(()=>{(async()=>{ setSurahs(await fetchSurahs()) })()},[])
-  useEffect(()=>{ if(!selected) return; setLoading(true); fetchSurah(selected,edition).then(r=>{ setArabic(r.arabic); setEnglish(r.english); setBismillah(r.bismillah ?? null) }).finally(()=>setLoading(false)) },[selected,edition])
+useEffect(() => {
+  if (!selected) return;
+  setLoading(true);
+  fetchSurah(selected, edition)
+    .then(r => {
+      let ar = r.arabic;
+      let bism: string | null = r.bismillah ?? null;
+
+      // For all surahs except 1 and 9, ensure Bismillah is separated
+      if (selected !== 1 && selected !== 9 && ar.length > 0) {
+        const firstText = ar[0].text || '';
+
+        if (bism && firstText.startsWith(bism)) {
+          // If the text from the API/lib still has Bismillah prefixed to ayah 1,
+          // strip it out so Bismillah appears only in the header.
+          const rest = firstText.slice(bism.length).trimStart();
+          ar = [{ ...ar[0], text: rest || ar[0].text }, ...ar.slice(1)];
+        } else if (!bism && firstText.length >= 38) {
+          // Fallback: treat the first 38 characters of ayah 1 as Bismillah.
+          const b = firstText.slice(0, 38);
+          const rest = firstText.slice(38).trimStart();
+          bism = b;
+          ar = [{ ...ar[0], text: rest || ar[0].text }, ...ar.slice(1)];
+        }
+      }
+
+      setArabic(ar);
+      setEnglish(r.english);
+      setBismillah(bism);
+    })
+    .finally(() => setLoading(false));
+}, [selected, edition]);
 
   const isBookmarked = (s: number, a: number) => bookmarks.has(keyFor(s,a))
   const toggleBookmark = (s: number, a: number) => {
@@ -188,7 +219,7 @@ export default function Quran(){
             </div>
           )
       )}
-      <p className="text-xs text-gray-400 text-center">First load needs network; afterwards it’s cached offline. Bookmarks & view settings are saved on this device.</p>
+      <p className="text-xs text-gray-400 text-center">First load needs network; afterwards it's cached offline. Bookmarks & view settings are saved on this device.</p>
     </div>
   )
 }

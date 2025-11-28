@@ -9,6 +9,8 @@ export function downloadICS(filename: string, ics: string) {
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
+const DEFAULT_REMINDER_MIN = 10 // fallback if nothing is provided; Settings can override this
+
 function fmt(date: Date) {
   const pad = (n: number) => n.toString().padStart(2, '0')
   const yyyy = date.getFullYear()
@@ -33,7 +35,7 @@ export function buildIcsForDates(
   items: IcsItem[],
   name = 'Athan Reminders',
   groupId = 'ATHAN-PWA',
-  defaultReminderMin = 10
+  defaultReminderMin = DEFAULT_REMINDER_MIN
 ) {
   const lines = [
     'BEGIN:VCALENDAR',
@@ -47,7 +49,7 @@ export function buildIcsForDates(
 
   items.forEach((it, i) => {
     const start = fmt(it.when)
-    const end = fmt(new Date(it.when.getTime() + 5 * 60 * 1000))
+    const end = fmt(new Date(it.when.getTime() + 5 * 60 * 1000)) // 5 minutes after start
     const minutes = typeof it.remindMinutes === 'number' ? Math.max(0, Math.floor(it.remindMinutes)) : defaultReminderMin
     const uid = `${start}-${i}@${groupId}`
     const suffix = typeof it.summarySuffix === 'string' ? it.summarySuffix : `(${minutes} min before)`
@@ -109,7 +111,7 @@ export function buildIcsForPrayerDay(
 ) {
   const name = opts?.name ?? 'Athan Reminders'
   const groupId = opts?.groupId ?? 'ATHAN-PWA'
-  const defaultReminderMin = opts?.defaultReminderMin ?? 10
+  const defaultReminderMin = opts?.defaultReminderMin ?? DEFAULT_REMINDER_MIN
 
   const offsetMin = Math.max(1, Math.floor(offsetMinInput || 0)) // clamp to at least 1 min
   const minus = (d: Date, m: number) => new Date(d.getTime() - m * 60 * 1000)
@@ -160,7 +162,7 @@ export function buildIcsForWeek(
 ) {
   const name = opts?.name ?? 'Athan Reminders'
   const groupId = opts?.groupId ?? 'ATHAN-PWA'
-  const defaultReminderMin = opts?.defaultReminderMin ?? 10
+  const defaultReminderMin = opts?.defaultReminderMin ?? DEFAULT_REMINDER_MIN
   const offsetMin = Math.max(1, Math.floor(offsetMinInput || 0))
 
   const chunks: string[] = []

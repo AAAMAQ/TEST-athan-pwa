@@ -34,10 +34,15 @@ export default function Privacy() {
         The app works offline. Some advanced features (e.g., online push) require internet. Quran text may be cached
         for offline reading if fetched online or can be bundled locally depending on your build.
       </p>
+      <h2 className="text-xl font-semibold">No Ads</h2>
+      <p className="text-gray-300">
+        This app is completely ad-free. We believe in a respectful user experience without distractions.
+        No Ads means no tracking or data collection for advertising purposes.
+      </p>
 
       <h2 className="text-xl font-semibold">Contact</h2>
       <p className="text-gray-300">
-        For questions about privacy, please reach out via the support links in Credits.
+        For questions about privacy, please contact us at aaa.maq.contact.us@gmail.com .
       </p>
     </div>
   )
