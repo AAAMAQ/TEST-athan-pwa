@@ -11,6 +11,7 @@ export default function NeedHelp() {
 
       <nav className="text-sm text-teal-300 flex flex-wrap gap-3">
         <a href="#downloadapp" className="underline">Download & install the app</a>
+        <a href="#notifications" className="underline">Download and Set reminders via Calendar (.ics)</a>
         <a href="#qibla" className="underline">Qibla not accurate?</a>
         <a href="#quran" className="underline">How to use the Quran</a>
         <a href="#bookmarks" className="underline">Quran bookmarks</a>
@@ -501,6 +502,74 @@ export default function NeedHelp() {
           select the closest match above. When in doubt, follow your local masjid or scholar first, and use the app
           as a helpful tool, not as a replacement for knowledge.
         </p>
+      </section>
+            
+            {/* HOW TO USE CALENDAR NOTIFICATIONS */}
+            <section id="notifications" className="space-y-2">
+        <h2 className="text-xl font-semibold">Reminders via Calendar (.ics)</h2>
+        <p className="text-gray-200">
+          You can let your phone&apos;s calendar handle prayer alerts even when the PWA is closed by exporting an
+          .ics file from the Settings screen.
+        </p>
+
+        <h3 className="font-semibold mt-3">Step-by-step: Exporting reminders</h3>
+        <ol className="list-decimal pl-5 space-y-1 text-gray-200">
+          <li>Open the <span className="font-semibold">Settings</span> tab at the bottom of the app.</li>
+          <li>Scroll to the section called <span className="font-semibold">Reminders via Calendar (.ics)</span>.</li>
+          <li>
+            In <span className="font-semibold">Reminder offset (minutes before each prayer)</span>, type how many
+            minutes before every prayer you want the reminder (for example 10, 15, or 20).
+          </li>
+          <li>
+            (Optional) Set your <span className="font-semibold">Fixed Isha reminder (HH:mm)</span> time between Isha
+            and Fajr if you want an extra nightly reminder as a separate calendar event.
+          </li>
+          <li>
+            Tap one of the export buttons:
+            <span className="font-semibold"> Export 7 days (.ics)</span>,
+            <span className="font-semibold"> Export 30 Days (.ics)</span>, or
+            <span className="font-semibold"> Export 1 Year (.ics)</span>.
+          </li>
+          <li>
+            When the .ics file finishes downloading, open it. Your device will ask which calendar to add the events to –
+            you can use an existing calendar or create a new one like
+            <span className="font-semibold"> &quot;Athan Reminders&quot;</span>.
+          </li>
+          <li>
+            Make sure that calendar is visible in your calendar app and that notifications are allowed for it in your
+            phone&apos;s system settings.
+          </li>
+        </ol>
+
+        <h3 className="font-semibold mt-4">Important notes & things to watch out for</h3>
+        <ul className="list-disc pl-5 space-y-1 text-gray-200">
+          <li>
+            <span className="font-semibold">Your current location is used when exporting.</span> If you travel to a new
+            city or country, export a fresh .ics so the reminders match the new prayer times.
+          </li>
+          <li>
+            <span className="font-semibold">Changing settings does not update old events automatically.</span> If you
+            change calculation method, madhab, high latitude rule, reminder offset, or fixed Isha time, export and
+            import a new .ics file. Old events will stay as they are.
+          </li>
+          <li>
+            <span className="font-semibold">Avoid duplicate events.</span> If you re-export, you may want to delete the
+            old &quot;Athan Reminders&quot; calendar (or its events) first so you don&apos;t end up with duplicates.
+          </li>
+          <li>
+            <span className="font-semibold">Time zones matter.</span> Reminders follow your device time zone. After a
+            big time zone change, check the events and re-export if anything looks off.
+          </li>
+          <li>
+            <span className="font-semibold">Calendar alerts, not the PWA, make the sound.</span> Once imported, your
+            device&apos;s calendar is responsible for the notification sound and banner, so make sure calendar
+            notifications are enabled in system settings.
+          </li>
+          <li>
+            <span className="font-semibold">Fixed Isha reminder is optional.</span> If you don&apos;t want it, leave it
+            unused or delete that event from your calendar after import.
+          </li>
+        </ul>
       </section>
       
 
