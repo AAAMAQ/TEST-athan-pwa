@@ -10,6 +10,7 @@ export default function NeedHelp() {
       </p>
 
       <nav className="text-sm text-teal-300 flex flex-wrap gap-3">
+        <a href="#downloadapp" className="underline">Download & install the app</a>
         <a href="#qibla" className="underline">Qibla not accurate?</a>
         <a href="#quran" className="underline">How to use the Quran</a>
         <a href="#bookmarks" className="underline">Quran bookmarks</a>
@@ -310,6 +311,109 @@ export default function NeedHelp() {
         <p className="text-gray-300 text-xs">
           Iqama times and advanced widgets are not yet implemented in this web version. They may be added in the
           future as the app evolves.
+        </p>
+      </section>
+
+      {/* HOW TO DOWNLOAD THE APP */}
+      <section id="downloadapp" className="space-y-2">
+        <h2 className="text-xl font-semibold">📱 How to Install Athan App (Android & iPhone)</h2>
+
+        <p className="text-gray-200 text-sm">
+          This is the <span className="font-semibold">beta-testing</span> launch of the Athan web app. You can
+          install it to your home screen so it behaves like a normal app and works offline after the first load.
+          The current beta is available at:
+        </p>
+        <p className="text-teal-300 text-sm font-mono break-all">
+          https://test-athan-pwa.vercel.app/
+        </p>
+
+        <h3 className="font-semibold text-teal-300 text-sm mt-2">✅ Install on Android</h3>
+        <p className="text-gray-200 text-sm">
+          Installing the Athan App on Android is very easy:
+        </p>
+        <ol className="list-decimal pl-5 space-y-1 text-gray-200 text-sm">
+          <li>
+            <span className="font-semibold">Open the website in Chrome</span>
+            <br />
+            Visit: <span className="font-mono text-teal-300">https://test-athan-pwa.vercel.app/</span>
+          </li>
+          <li>
+            <span className="font-semibold">Look for “Install App”</span>
+            <br />
+            Most Android phones will automatically show:
+            <ul className="list-disc pl-5 mt-1">
+              <li>A banner at the bottom saying <span className="italic">“Add to Home Screen”</span>, or</li>
+              <li>A pop-up saying <span className="italic">“Install App”</span></li>
+            </ul>
+            Tap it.
+          </li>
+          <li>
+            <span className="font-semibold">If you don&apos;t see it</span>
+            <br />
+            Tap the three dots (⋮) in the top-right corner of Chrome and choose
+            <span className="font-semibold"> Add to Home screen</span>.
+          </li>
+          <li>
+            <span className="font-semibold">Confirm</span>
+            <br />
+            Tap <span className="font-semibold">Add</span>, then <span className="font-semibold">Add to Home screen</span> again.
+          </li>
+        </ol>
+        <p className="text-gray-300 text-xs">
+          That&apos;s it — the app will now appear on your home screen just like a normal app, with your Athan icon.
+        </p>
+
+        <hr className="border-gray-700 my-3" />
+
+        <h3 className="font-semibold text-teal-300 text-sm mt-2">🍎 Install on iPhone (iOS – Safari only)</h3>
+        <p className="text-gray-200 text-sm">
+          Apple requires a few extra steps, but it&apos;s still very easy:
+        </p>
+        <ol className="list-decimal pl-5 space-y-1 text-gray-200 text-sm">
+          <li>
+            <span className="font-semibold">Open the website in Safari</span>
+            <br />
+            Visit: <span className="font-mono text-teal-300">https://test-athan-pwa.vercel.app/</span>
+            <br />
+            <span className="text-xs text-gray-300">
+              Important: iOS only allows installation from <span className="font-semibold">Safari</span>, not Chrome.
+            </span>
+          </li>
+          <li>
+            <span className="font-semibold">Tap the Share button</span>
+            <br />
+            At the bottom of the screen, tap the square with the arrow pointing up (⬆️).
+          </li>
+          <li>
+            <span className="font-semibold">Scroll down</span>
+            <br />
+            Find and tap <span className="font-semibold">Add to Home Screen</span>.
+          </li>
+          <li>
+            <span className="font-semibold">Confirm the name</span>
+            <br />
+            You will see <span className="font-mono">Athan PWA</span>. Tap <span className="font-semibold">Add</span> (top-right corner).
+          </li>
+        </ol>
+        <p className="text-gray-300 text-xs">
+          The Athan app will now appear on your home screen with the icon.
+        </p>
+
+        <h3 className="font-semibold text-teal-300 text-sm mt-2">In short</h3>
+        <div className="text-gray-200 text-sm space-y-1">
+          <p>
+            <span className="font-semibold">Android:</span> Open in Chrome → “Add to Home Screen” → Confirm.
+          </p>
+          <p>
+            <span className="font-semibold">iPhone:</span> Open in Safari → Share → “Add to Home Screen” → Add.
+          </p>
+        </div>
+
+        <p className="text-gray-300 text-xs mt-2">
+          After you install the app to your home screen using the above steps, it will work offline after the first
+          successful load, InshaAllah. Some features like initial Quran loading still need an internet connection the
+          first time you open them, but afterwards the app is designed to be lightweight and cache data on your
+          device.
         </p>
       </section>
 

@@ -43,12 +43,12 @@ export default function Credits({ go }: Props) {
     <div className="max-w-3xl mx-auto p-4 space-y-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-bold">Credits</h1>
-        <p className="text-gray-300">Athan PWA — lightweight, privacy-friendly, and built for daily use.</p>
+        <p className="text-gray-300">Athan PWA is a lightweight, fast Islamic app designed for daily use — showing accurate prayer times, Qibla direction, full Quran in Uthmani script, and a Salah tracker. Works offline, privacy-friendly, and takes almost no storage.</p>
       </header>
 
       <section className="bg-gray-800 rounded-lg p-4 space-y-2">
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-gray-200">
-          <p><span className="font-semibold">App:</span> Free Athan PWA</p>
+          <p><span className="font-semibold">App:</span> Al Noor Athan PWA App</p>
           <p><span className="font-semibold">Version:</span> v1.01.1</p>
           <p><span className="font-semibold">Company:</span> BiG MAQ Studio</p>
           <p><span className="font-semibold">Copyright:</span> The content of this software is copyrighted © {new Date().getFullYear()} by BiG MAQ Studio. All rights reserved. The software code and accompanying documentation are protected by copyright law, prohibiting unauthorized reproduction or distribution without the explicit permission of the copyright owner.</p>
@@ -98,7 +98,12 @@ export default function Credits({ go }: Props) {
         </div>
         {shared && <p className="text-sm text-teal-300">{shared}</p>}
       </section>
+      <section className="text-center text-sm text-gray-500 mt-6">
+        <p>© {new Date().getFullYear()} BiG MAQ Studio. All rights reserved.</p>
+        <p>To install the app read the Need Help Page</p>
+        </section> 
     </div>
+
   )
 }
 
