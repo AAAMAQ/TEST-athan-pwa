@@ -114,7 +114,7 @@ Company: BiG MAQ Studio
 Version: 1.0.01
 Published on: Thursday, 25 August 2025
 The content of this software is copyrighted © 2023 by BiG MAQ Studio. All rights reserved.
-The software code and accompanying documentation are protected by copyright law,
+The softßware code and accompanying documentation are protected by copyright law,
 prohibiting unauthorized reproduction or distribution without the explicit permission of the copyright owner.
 
 Support the Creators

@@ -171,6 +171,7 @@ export default function Settings(){
         <p className="text-xs text-gray-400">
           .ics is generated with your current location &amp; settings. If you travel, export again so your calendar
           matches your new city.
+          
         </p>
       </section>
     </div>
