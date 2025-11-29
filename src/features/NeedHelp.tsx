@@ -11,7 +11,7 @@ export default function NeedHelp() {
 
       <nav className="text-sm text-teal-300 flex flex-wrap gap-3">
         <a href="#downloadapp" className="underline">Download & install the app</a>
-        <a href="#notifications" className="underline">Download and Set reminders via Calendar (.ics)</a>
+        <a href="#downloadics" className="underline">Download and Set reminders via Calendar (.ics)</a>
         <a href="#qibla" className="underline">Qibla not accurate?</a>
         <a href="#quran" className="underline">How to use the Quran</a>
         <a href="#bookmarks" className="underline">Quran bookmarks</a>
@@ -505,7 +505,7 @@ export default function NeedHelp() {
       </section>
             
             {/* HOW TO USE CALENDAR NOTIFICATIONS */}
-            <section id="notifications" className="space-y-2">
+            <section id="downloadics" className="space-y-2">
         <h2 className="text-xl font-semibold">Reminders via Calendar (.ics)</h2>
         <p className="text-gray-200">
           You can let your phone&apos;s calendar handle prayer alerts even when the PWA is closed by exporting an
@@ -520,6 +520,10 @@ export default function NeedHelp() {
             In <span className="font-semibold">Reminder offset (minutes before each prayer)</span>, type how many
             minutes before every prayer you want the reminder (for example 10, 15, or 20).
           </li>
+          <li className="font-semibold">
+            IMPORTANT: Make sure that the calculation method is right to your country and city, since that affects prayer times.
+            failing to do so may lead to incorrect reminder times.
+          </li>
           <li>
             (Optional) Set your <span className="font-semibold">Fixed Isha reminder (HH:mm)</span> time between Isha
             and Fajr if you want an extra nightly reminder as a separate calendar event.
@@ -532,8 +536,8 @@ export default function NeedHelp() {
           </li>
           <li>
             When the .ics file finishes downloading, open it. Your device will ask which calendar to add the events to –
-            you can use an existing calendar or create a new one like
-            <span className="font-semibold"> &quot;Athan Reminders&quot;</span>.
+            you can use an existing calendar or create a new one like. Its better to create a new calendar named
+            <span className="font-semibold"> &quot;Athan Reminders&quot;</span> to keep them separate. This will make sure that it will be easy to delete if you travel. As Calendar apps do not support mass event deleting.
           </li>
           <li>
             Make sure that calendar is visible in your calendar app and that notifications are allowed for it in your
@@ -566,8 +570,7 @@ export default function NeedHelp() {
             notifications are enabled in system settings.
           </li>
           <li>
-            <span className="font-semibold">Fixed Isha reminder is optional.</span> If you don&apos;t want it, leave it
-            unused or delete that event from your calendar after import.
+            <span className="font-semibold"> If you want multiple reminders</span> you can do the same steps as above while changing the reminder time.
           </li>
         </ul>
       </section>
