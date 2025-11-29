@@ -28,7 +28,7 @@ export default function PrayerTimes() {
     <div className="space-y-4 text-center">
       <h2 className="text-2xl font-bold">Prayer Times (Today)</h2>
       {Object.keys(times).length===0 ? <p>Requesting location…</p> : (
-        <table className="table">
+        <table className="table mx-auto">
           <tbody>
             {(['fajr','sunrise','dhuhr','asr','maghrib','isha'] as const).map(k=>(
               <tr key={k}><td className="pr-4 capitalize">{k}</td><td>{times[k]!.toLocaleTimeString()}</td></tr>

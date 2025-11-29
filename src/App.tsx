@@ -46,7 +46,7 @@ export default function App() {
           >
             ← Back
           </button>
-        ) : <span />}
+        ) : <span className="w-[64px]" />}
         <h1 className="text-xl font-bold text-center flex-1">{title}</h1>
         <span className="w-[64px]" />
       </header>
