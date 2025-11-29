@@ -16,6 +16,8 @@ export default function NeedHelp() {
         <a href="#bookmarks" className="underline">Quran bookmarks</a>
         <a href="#location" className="underline">Location & accuracy</a>
         <a href="#notifications" className="underline">Reminders & notifications</a>
+        <a href="#methods" className="underline"> Which Calculation method & settings to choose?</a>
+        <a href="#calculation" className="underline">Calculation method, Madhab & High-latitude rule</a>
         <a href="#troubleshooting" className="underline">Troubleshooting & contact</a>
       </nav>
 
@@ -416,6 +418,91 @@ export default function NeedHelp() {
           device.
         </p>
       </section>
+
+      {/* HOW TO USE PRAYER TIME METHODS */}
+      <section id="methods" className="space-y-2">
+        <h2 className="text-xl font-semibold">Which calculation method should I choose?</h2>
+        <p className="text-gray-200 text-sm">
+          Different organisations use slightly different angles and rules to calculate <span className="font-semibold">Fajr</span>
+          and <span className="font-semibold">Isha</span>. This does <span className="font-semibold">not change your aqeedah</span> – it only
+          affects a few minutes earlier or later. The safest option is always to <span className="font-semibold">match your local masjid or
+          Islamic authority</span> and then set the app to use the same method.
+        </p>
+
+        <p className="text-gray-200 text-sm">
+          Below is a very simple overview of the most common methods and where they are often used. These are
+          <span className="font-semibold">general patterns, not strict rules</span> – individual masjids may follow something different.
+        </p>
+
+        <div className="overflow-x-auto text-xs sm:text-sm">
+          <table className="min-w-full border border-gray-700 text-left">
+            <thead className="bg-gray-800">
+              <tr>
+                <th className="border-b border-gray-700 px-2 py-1 font-semibold">Method</th>
+                <th className="border-b border-gray-700 px-2 py-1 font-semibold">Common regions / examples</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border-b border-gray-700 px-2 py-1">Muslim World League (MWL)</td>
+                <td className="border-b border-gray-700 px-2 py-1">Many European cities, Russia, Australia, parts of Africa; often used as a global default when no local authority is known.</td>
+              </tr>
+              <tr>
+                <td className="border-b border-gray-700 px-2 py-1">Umm al-Qura (Makkah)</td>
+                <td className="border-b border-gray-700 px-2 py-1">Saudi Arabia (official), sometimes nearby Gulf countries.</td>
+              </tr>
+              <tr>
+                <td className="border-b border-gray-700 px-2 py-1">Egyptian General Authority</td>
+                <td className="border-b border-gray-700 px-2 py-1">Egypt, and often Jordan, Lebanon, Syria, Palestine and surrounding areas.</td>
+              </tr>
+              <tr>
+                <td className="border-b border-gray-700 px-2 py-1">Karachi (Hanafi)</td>
+                <td className="border-b border-gray-700 px-2 py-1">Pakistan, India, Bangladesh, Afghanistan, Sri Lanka; some Hanafi mosques in the UK and elsewhere.</td>
+              </tr>
+              <tr>
+                <td className="border-b border-gray-700 px-2 py-1">Dubai</td>
+                <td className="border-b border-gray-700 px-2 py-1">United Arab Emirates (official).</td>
+              </tr>
+              <tr>
+                <td className="border-b border-gray-700 px-2 py-1">Qatar</td>
+                <td className="border-b border-gray-700 px-2 py-1">Qatar (official).</td>
+              </tr>
+              <tr>
+                <td className="border-b border-gray-700 px-2 py-1">Kuwait</td>
+                <td className="border-b border-gray-700 px-2 py-1">Kuwait (official).</td>
+              </tr>
+              <tr>
+                <td className="border-b border-gray-700 px-2 py-1">Moonsighting Committee</td>
+                <td className="border-b border-gray-700 px-2 py-1">Some communities in North America, UK, South Africa and elsewhere who follow Moonsighting Committee Worldwide (MCW).</td>
+              </tr>
+              <tr>
+                <td className="border-b border-gray-700 px-2 py-1">North America / ISNA</td>
+                <td className="border-b border-gray-700 px-2 py-1">United States and Canada (especially older timetables and apps).</td>
+              </tr>
+              <tr>
+                <td className="border-b border-gray-700 px-2 py-1">Singapore</td>
+                <td className="border-b border-gray-700 px-2 py-1">Singapore (MUIS) and sometimes nearby regions.</td>
+              </tr>
+              <tr>
+                <td className="border-b border-gray-700 px-2 py-1">Tehran</td>
+                <td className="border-b border-gray-700 px-2 py-1">Iran (official) and some Shia communities.</td>
+              </tr>
+              <tr>
+                <td className="px-2 py-1">Turkey (Diyanet)</td>
+                <td className="px-2 py-1">Turkey (official), Turkish communities abroad, sometimes Cyprus.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p className="text-gray-300 text-xs">
+          If the times in the app differ slightly (a few minutes) from your local masjid, that is normal and often
+          due to different methods or rounding. If the difference is large, ask which method your masjid uses and
+          select the closest match above. When in doubt, follow your local masjid or scholar first, and use the app
+          as a helpful tool, not as a replacement for knowledge.
+        </p>
+      </section>
+      
 
       {/* TROUBLESHOOTING & CONTACT */}
       <section id="troubleshooting" className="space-y-2">

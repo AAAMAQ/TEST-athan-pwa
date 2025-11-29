@@ -79,6 +79,9 @@ export default function Settings(){
         <div><label className="block mb-1">High Latitude Rule:</label>
           <select className="text-black" value={s.highLatRule} onChange={e=>update('highLatRule', e.target.value as HighLatKey)}>{HIGHLATS.map(h=><option key={h} value={h}>{h}</option>)}</select>
         </div>
+        <p className="text-xs text-gray-400">
+          Tip: Read the Need Help page for guidance on which settings to choose.
+        </p>
       </section>
 
 
