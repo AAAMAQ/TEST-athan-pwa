@@ -530,13 +530,14 @@ export default function NeedHelp() {
           </li>
           <li>
             Tap one of the export buttons:
+            <span className="font-semibold"> Export 1 day (.ics)</span>,
             <span className="font-semibold"> Export 7 days (.ics)</span>,
             <span className="font-semibold"> Export 30 Days (.ics)</span>, or
             <span className="font-semibold"> Export 1 Year (.ics)</span>.
           </li>
           <li>
             When the .ics file finishes downloading, open it. Your device will ask which calendar to add the events to –
-            you can use an existing calendar or create a new one like. Its better to create a new calendar named
+            you can use an existing calendar or create a new one like. Its better to create a  <span className="font-semibold">  NEW CALENDAR </span> named
             <span className="font-semibold"> &quot;Athan Reminders&quot;</span> to keep them separate. This will make sure that it will be easy to delete if you travel. As Calendar apps do not support mass event deleting.
           </li>
           <li>

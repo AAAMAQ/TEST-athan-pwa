@@ -140,11 +140,19 @@ export default function Settings(){
 
         <div className="flex flex-wrap gap-2">
            <button
-            onClick={() => exportIcs(7, '7days')}
+            onClick={() => exportIcs(1, '1days')}
             className="px-3 py-1 rounded bg-red-600 hover:bg-blue-500"
+          >
+            Export 1 day (.ics)
+          </button>
+
+            <button
+            onClick={() => exportIcs(7, '7days')}
+            className="px-3 py-1 rounded bg-orange-600 hover:bg-blue-500"
           >
             Export 7 days (.ics)
           </button>
+
           <button
             onClick={() => exportIcs(30, '30days')}
             className="px-3 py-1 rounded bg-yellow-600 hover:bg-blue-500"
