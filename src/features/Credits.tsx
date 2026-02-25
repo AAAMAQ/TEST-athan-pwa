@@ -9,7 +9,7 @@ export default function Credits({ go }: Props) {
   const [shared, setShared] = useState<string | null>(null)
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://example.com'
-  const buyMeACoffee = 'https://www.buymeacoffee.com/your-temp-link'
+  const buyMeACoffee = 'https://buymeacoffee.com/bigmaqstudio'
 
   async function onShare() {
     const shareData = {
