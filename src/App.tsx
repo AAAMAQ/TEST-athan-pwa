@@ -10,11 +10,13 @@ import Privacy from './features/Privacy'
 import Vision from './features/Vision'
 import NeedHelp from './features/NeedHelp'
 import SalahTracker from './features/SalahTracker'
+import AthanEngine from './features/AthanEngine'
+
 
 // Primary tabs shown in the bottom nav (keep it simple for mobile)
 const primaryTabs = ['Home', 'Prayer', 'Settings'] as const
 type Tab = typeof primaryTabs[number]
-type Screen = 'Home' | 'Prayer' | 'Settings' | 'Qibla' | 'Quran' | 'Credits' | 'Privacy' | 'Vision' | 'NeedHelp' | 'SalahTracker' | 'PrayerMonth'
+type Screen = 'Home' | 'Prayer' | 'Settings' | 'Qibla' | 'Quran' | 'Credits' | 'Privacy' | 'Vision' | 'NeedHelp' | 'SalahTracker' | 'PrayerMonth' | 'AthanEngine'
 
 export default function App() {
   // App should open on Home, not Prayer
@@ -33,7 +35,7 @@ export default function App() {
     if (isPrimary(target)) setTab(target)
   }
 
-  const title = screen
+  const title = screen === 'AthanEngine' ? 'Advanced Athan' : screen
 
   return (
     <div className="flex flex-col h-full">
@@ -64,6 +66,7 @@ export default function App() {
         {screen === 'NeedHelp' && <NeedHelp />}
         {/* Optional future screens */} 
         {screen === 'SalahTracker' && <SalahTracker />}
+        {screen === 'AthanEngine' && <AthanEngine go={go} />}
       </main>
 
       {/* Bottom navigation — ONLY three tabs */}

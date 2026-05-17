@@ -12,6 +12,7 @@ export default function NeedHelp() {
       <nav className="text-sm text-teal-300 flex flex-wrap gap-3">
         <a href="#downloadapp" className="underline">Download & install the app</a>
         <a href="#downloadics" className="underline">Download and Set reminders via Calendar (.ics)</a>
+        <a href="#whatsnew" className="underline">What&apos;s new?</a>
         <a href="#qibla" className="underline">Qibla not accurate?</a>
         <a href="#quran" className="underline">How to use the Quran</a>
         <a href="#bookmarks" className="underline">Quran bookmarks</a>
@@ -21,6 +22,94 @@ export default function NeedHelp() {
         <a href="#calculation" className="underline">Calculation method, Madhab & High-latitude rule</a>
         <a href="#troubleshooting" className="underline">Troubleshooting & contact</a>
       </nav>
+
+
+      {/* WHAT'S NEW */}
+      <section id="whatsnew" className="space-y-2">
+        <h2 className="text-xl font-semibold">What&apos;s new?</h2>
+        <p className="text-gray-200 text-sm">
+          The newest feature is <span className="font-semibold">Advanced Athan</span>. This is a separate prayer-time
+          tool inside the app that lets you search for a city, country, or coordinates and generate a custom prayer-time
+          preview and calendar reminder file for that location.
+        </p>
+
+        <h3 className="font-semibold text-teal-300 text-sm mt-2">What Advanced Athan can do</h3>
+        <ul className="list-disc pl-5 space-y-1 text-gray-200 text-sm">
+          <li>
+            <span className="font-semibold">Search any location:</span> Enter a city, country, or coordinates, such as
+            <span className="font-mono text-teal-300"> London</span>, <span className="font-mono text-teal-300">New York</span>,
+            <span className="font-mono text-teal-300"> Makkah Saudi Arabia</span>, or
+            <span className="font-mono text-teal-300"> 21.4225, 39.8262</span>.
+          </li>
+          <li>
+            <span className="font-semibold">Choose a custom date range:</span> Generate prayer times from one date to
+            another instead of being limited to only today or a full month.
+          </li>
+          <li>
+            <span className="font-semibold">Choose calculation settings:</span> Select the calculation method and Madhab
+            just for Advanced Athan without changing your main Settings page.
+          </li>
+          <li>
+            <span className="font-semibold">Preview the prayer times:</span> Check Fajr, Sunrise, Dhuhr, Asr, Maghrib,
+            and Isha before downloading anything.
+          </li>
+          <li>
+            <span className="font-semibold">Download a custom .ics file:</span> Export calendar reminders for the exact
+            location, date range, calculation method, Madhab, and reminder time you selected.
+          </li>
+        </ul>
+
+        <h3 className="font-semibold text-teal-300 text-sm mt-2">Important: calculation methods differ by country</h3>
+        <p className="text-gray-200 text-sm">
+          Prayer times can differ between countries, cities, masjids, and Islamic organisations because different
+          calculation methods use different Fajr and Isha angles, Asr rules, and high-latitude handling. If you are in
+          another country, travelling, or generating a calendar for a different city, please try the available calculation
+          methods and compare them with a trusted local masjid or Islamic authority.
+        </p>
+        <p className="text-gray-200 text-sm">
+          If one method looks a few minutes different from another app or website, that can be normal. If the difference
+          is large, change the calculation method, check the Madhab setting for Asr, and compare with your local masjid.
+          The best setting is usually the one that matches the timetable used by the Muslim community in that area.
+        </p>
+
+        <h3 className="font-semibold text-teal-300 text-sm mt-2">Privacy and data use</h3>
+        <p className="text-gray-200 text-sm">
+          Advanced Athan is designed to stay lightweight and privacy-respecting. The app does not create an account and
+          does not store your searches on our server. Location searches may be cached locally in your browser so the same
+          city does not need to be looked up again every time.
+        </p>
+        <p className="text-gray-200 text-sm">
+          Some Advanced Athan features use external services to make the search and timetable work properly. Location
+          lookup uses OpenStreetMap-based data, timezone lookup may use a timezone service, and prayer-time timetable
+          data may be requested from AlAdhan for the selected location and date range. These services are used only to
+          provide the feature you requested.
+        </p>
+
+        <h3 className="font-semibold text-teal-300 text-sm mt-2">Credits and data sources</h3>
+        <ul className="list-disc pl-5 space-y-1 text-gray-200 text-sm">
+          <li>
+            <span className="font-semibold">OpenStreetMap contributors:</span> Used for location search and readable
+            place names. Location data © OpenStreetMap contributors.
+          </li>
+          <li>
+            <span className="font-semibold">TimeAPI:</span> Used to help identify the official timezone for searched
+            coordinates when needed.
+          </li>
+          <li>
+            <span className="font-semibold">AlAdhan:</span> Used for prayer-time timetable data in Advanced Athan when
+            generating prayer-time previews and calendar exports for searched locations.
+          </li>
+          <li>
+            <span className="font-semibold">Adhan calculation library:</span> Used elsewhere in the app for local prayer
+            time calculations, especially for current-device location features.
+          </li>
+        </ul>
+
+        <p className="text-gray-300 text-xs">
+          Advanced Athan is still being improved. Always compare prayer times with your local masjid if you are unsure,
+          especially in high-latitude areas, during travel, or when generating a long calendar export.
+        </p>
+      </section>
 
       {/* QIBLA HELP */}
       <section id="qibla" className="space-y-2">
@@ -600,6 +689,9 @@ export default function NeedHelp() {
         <p className="text-gray-300 text-xs">
           JazakAllahu khairan for using this app and for any feedback you send. Your suggestions directly help improve
           the experience for everyone.
+          Just remember that we know neither your birthday nor your shoe size and we'd like to keep it that way.
+          We value your privacy and will never ask for personal information that is not necessary for the app to function. 
+          We are here to help with any technical issues or questions about using the app, so please don&apos;t hesitate to reach out if you need assistance.
         </p>
       </section>
     </div>

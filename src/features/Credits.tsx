@@ -48,8 +48,8 @@ export default function Credits({ go }: Props) {
 
       <section className="bg-gray-800 rounded-lg p-4 space-y-2">
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-gray-200">
-          <p><span className="font-semibold">App:</span> Al Noor Athan PWA App</p>
-          <p><span className="font-semibold">Version:</span> v1.01.1</p>
+          <p><span className="font-semibold">App:</span> Athan PWA App</p>
+          <p><span className="font-semibold">Version:</span> v2.01.1</p>
           <p><span className="font-semibold">Company:</span> BiG MAQ Studio</p>
           <p><span className="font-semibold">Copyright:</span> The content of this software is copyrighted © {new Date().getFullYear()} by BiG MAQ Studio. All rights reserved. The software code and accompanying documentation are protected by copyright law, prohibiting unauthorized reproduction or distribution without the explicit permission of the copyright owner.</p>
         </div>
@@ -97,6 +97,51 @@ export default function Credits({ go }: Props) {
           </button>
         </div>
         {shared && <p className="text-sm text-teal-300">{shared}</p>}
+      </section>
+      <section className="bg-gray-800 rounded-lg p-4 space-y-3">
+        <h2 className="text-xl font-semibold">Dev Notes</h2>
+        <p className="text-gray-300 text-sm">
+          Small development notes about recent updates, fixes, and improvements in the app. For detailed instructions,
+          troubleshooting, and feature explanations, please read the Need Help section.
+        </p>
+
+        <div className="space-y-3 text-sm text-gray-200">
+          <article className="border-l-2 border-teal-500 pl-3 space-y-1">
+            <p className="text-xs text-gray-400">May 18, 2026</p>
+            <h3 className="font-semibold text-teal-300">Version v2.01.1 and URL update</h3>
+            <p>
+              Reached a new update milestone with version v2.01.1. The public app URL/domain is being updated so the
+              app can move away from the older test link and use a cleaner release address.
+            </p>
+          </article>
+
+          <article className="border-l-2 border-teal-500 pl-3 space-y-1">
+            <p className="text-xs text-gray-400">May 18, 2026</p>
+            <h3 className="font-semibold text-teal-300">Advanced Athan improvements</h3>
+            <p>
+              Added support for searching locations, previewing prayer times, choosing calculation settings, and exporting
+              custom calendar reminder files for selected date ranges.
+            </p>
+          </article>
+
+          <article className="border-l-2 border-teal-500 pl-3 space-y-1">
+            <p className="text-xs text-gray-400">May 18, 2026</p>
+            <h3 className="font-semibold text-teal-300">Location and timezone handling</h3>
+            <p>
+              Improved searched-location handling so Advanced Athan can better display prayer times for different cities
+              and countries instead of relying only on the user&apos;s current device location.
+            </p>
+          </article>
+
+          <article className="border-l-2 border-teal-500 pl-3 space-y-1">
+            <p className="text-xs text-gray-400">May 18, 2026</p>
+            <h3 className="font-semibold text-teal-300">Calendar reminder export</h3>
+            <p>
+              Updated the custom .ics export experience so users can create calendar reminders for a chosen location,
+              calculation method, Madhab, reminder offset, and date range.
+            </p>
+          </article>
+        </div>
       </section>
       <section className="text-center text-sm text-gray-500 mt-6">
         <p>© {new Date().getFullYear()} BiG MAQ Studio. All rights reserved.</p>

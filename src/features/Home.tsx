@@ -8,16 +8,60 @@ import { computePrayerTimes, nextPrayer } from '../lib/prayer'
 
 const fmtTime = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
+const msUntilNextMidnight = () => {
+  const now = new Date()
+  const nextMidnight = new Date(now)
+  nextMidnight.setHours(24, 0, 0, 0)
+  return nextMidnight.getTime() - now.getTime()
+}
+
+const reverseGeocodeLocation = async (latitude: number, longitude: number) => {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&zoom=10&addressdetails=1`
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json'
+    }
+  })
+
+  if (!response.ok) throw new Error('Unable to reverse geocode location')
+
+  const data = await response.json()
+  const address = data?.address ?? {}
+  const city = address.city || address.town || address.village || address.hamlet || address.municipality || address.county
+  const region = address.state || address.region
+  const country = address.country
+
+  const parts = [city, region, country].filter(Boolean)
+  return parts.length > 0 ? parts.join(', ') : data?.display_name || ''
+}
+
 export default function Home({ go }: { go: (tab: Screen) => void }) {
   const [hijri, setHijri] = useState(formatHijri())
+  const [locationLabel, setLocationLabel] = useState('Location not available')
   const [next, setNext] = useState<{ name: string; time: Date } | null>(null)
   const [nextAt, setNextAt] = useState<string>('') // human local time for next prayer
   const [countdown, setCountdown] = useState('—:—:—')
 
-  // refresh hijri each mount (and at midnight if you want later)
+  // refresh hijri each mount and again at local midnight
   useEffect(() => {
+    let midnightTimeout: ReturnType<typeof setTimeout> | null = null
+    let dailyInterval: ReturnType<typeof setInterval> | null = null
+
     setHijri(formatHijri())
+
+    midnightTimeout = setTimeout(() => {
+      setHijri(formatHijri())
+      dailyInterval = setInterval(() => {
+        setHijri(formatHijri())
+      }, 24 * 60 * 60 * 1000)
+    }, msUntilNextMidnight())
+
+    return () => {
+      if (midnightTimeout) clearTimeout(midnightTimeout)
+      if (dailyInterval) clearInterval(dailyInterval)
+    }
   }, [])
+  
 
   // compute next prayer from current location
   useEffect(() => {
@@ -26,14 +70,28 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
       try {
         const loc = await getUserLocation()
         if (!loc || cancelled) return
+
+        const latitude = loc.coords.latitude
+        const longitude = loc.coords.longitude
+
+        try {
+          const readableLocation = await reverseGeocodeLocation(latitude, longitude)
+          if (!cancelled) {
+            setLocationLabel(readableLocation || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
+          }
+        } catch {
+          if (!cancelled) setLocationLabel(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
+        }
+
         const pt = computePrayerTimes({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude
+          latitude,
+          longitude
         })
         const n = nextPrayer(pt)
         setNext(n)
         setNextAt(n ? fmtTime(n.time) : '')
       } catch {
+        if (!cancelled) setLocationLabel('Location not available')
         // silently ignore; UI will show dashes
       }
     })()
@@ -63,6 +121,7 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
       <div className="text-center">
         <h1 className="text-2xl font-bold">Athan App</h1>
         <p className="text-sm text-gray-300">{hijri}</p>
+        <p className="text-bold text-gray-400">{locationLabel}</p>
       </div>
 
       {/* Big Next-Prayer Countdown */}
@@ -83,7 +142,9 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
         <HomeButton label="Quran" onClick={() => go('Quran')} />
         <HomeButton label="Qibla" onClick={() => go('Qibla')} />
         <HomeButton label="Track Salah" onClick={() => go('SalahTracker')} />
+        <HomeButton label="Advanced Athan" onClick={()=> go('AthanEngine')}/>
         <HomeButton label="Credits" onClick={() => go('Credits')} />
+        
       </div>
     </div>
   )
