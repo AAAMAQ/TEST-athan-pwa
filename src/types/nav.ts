@@ -16,3 +16,5 @@ export type Screen =
   | 'NeedHelp'
   | 'SalahTracker'
   | 'PrayerMonth'
+  | 'AthanEngine'
+  
