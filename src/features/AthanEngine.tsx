@@ -41,6 +41,8 @@ type EnginePrayerRow = {
   Isha: string
 }
 
+type TimeFormat = '24h' | '12h'
+
 const METHOD_OPTIONS: { value: EngineMethod; label: string }[] = [
   { value: 'MWL', label: 'Muslim World League' },
   { value: 'UmmAlQura', label: 'Umm Al-Qura' },
@@ -73,6 +75,23 @@ function addDays(date: Date, amount: number) {
 
 function getErrorMessage(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback
+}
+
+function formatEngineTime(value: string, format: TimeFormat) {
+  const trimmed = value.trim()
+  if (format === '24h') return trimmed
+
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return trimmed
+
+  let hour = Number(match[1])
+  const minute = match[2]
+  const period = hour >= 12 ? 'PM' : 'AM'
+
+  hour = hour % 12
+  if (hour === 0) hour = 12
+
+  return `${hour}:${minute} ${period}`
 }
 
 async function loadEngine() {
@@ -112,14 +131,16 @@ export default function AthanEngine({ go }: Props) {
   const [method, setMethod] = useState<EngineMethod>('MWL')
   const [madhab, setMadhab] = useState<EngineMadhab>('Shafi')
   const [reminderMinutes, setReminderMinutes] = useState(10)
+  const [timeFormat, setTimeFormat] = useState<TimeFormat>('24h')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
-  const goHome = () => {
-    if (go) return go('Home')
-    window.location.hash = '#Home'
+  const goIqama = () => {
+    if (go) return go('Iqama')
+    window.location.hash = '#Iqama'
   }
+
 
   async function handleSearch() {
     try {
@@ -207,7 +228,7 @@ export default function AthanEngine({ go }: Props) {
     }
   }
 
-  const reminderEventCount = rows.length * 5
+  const reminderEventCount = rows.length * 6
 
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
@@ -276,7 +297,7 @@ export default function AthanEngine({ go }: Props) {
           </select>
         </label>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <label className="space-y-1 text-sm">
             <span className="font-semibold">Madhab</span>
             <select
@@ -303,6 +324,36 @@ export default function AthanEngine({ go }: Props) {
               ))}
             </select>
           </label>
+
+          <div className="space-y-1 text-sm">
+            <span className="block font-semibold">Time format</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTimeFormat('24h')}
+                aria-pressed={timeFormat === '24h'}
+                className={`rounded border px-3 py-2 text-white ${
+                  timeFormat === '24h'
+                    ? 'border-teal-400 bg-teal-700'
+                    : 'border-gray-700 bg-gray-900 hover:bg-gray-700'
+                }`}
+              >
+                {timeFormat === '24h' ? '✓ ' : ''}24h
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimeFormat('12h')}
+                aria-pressed={timeFormat === '12h'}
+                className={`rounded border px-3 py-2 text-white ${
+                  timeFormat === '12h'
+                    ? 'border-teal-400 bg-teal-700'
+                    : 'border-gray-700 bg-gray-900 hover:bg-gray-700'
+                }`}
+              >
+                {timeFormat === '12h' ? '✓ ' : ''}AM/PM
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -382,12 +433,12 @@ export default function AthanEngine({ go }: Props) {
                 {rows.map((row) => (
                   <tr key={row.date} className="border-b border-gray-700/60 last:border-0">
                     <td className="py-2 pr-3 font-medium">{row.displayDate}</td>
-                    <td className="py-2 pr-3">{row.Fajr}</td>
-                    <td className="py-2 pr-3">{row.Sunrise}</td>
-                    <td className="py-2 pr-3">{row.Dhuhr}</td>
-                    <td className="py-2 pr-3">{row.Asr}</td>
-                    <td className="py-2 pr-3">{row.Maghrib}</td>
-                    <td className="py-2 pr-3">{row.Isha}</td>
+                    <td className="py-2 pr-3">{formatEngineTime(row.Fajr, timeFormat)}</td>
+                    <td className="py-2 pr-3">{formatEngineTime(row.Sunrise, timeFormat)}</td>
+                    <td className="py-2 pr-3">{formatEngineTime(row.Dhuhr, timeFormat)}</td>
+                    <td className="py-2 pr-3">{formatEngineTime(row.Asr, timeFormat)}</td>
+                    <td className="py-2 pr-3">{formatEngineTime(row.Maghrib, timeFormat)}</td>
+                    <td className="py-2 pr-3">{formatEngineTime(row.Isha, timeFormat)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -396,16 +447,17 @@ export default function AthanEngine({ go }: Props) {
 
           <div className="rounded bg-gray-900 p-3 text-xs text-gray-400 space-y-1">
             <p>Calendar alerts are handled by your calendar app, not by the PWA.</p>
+            <p>The time format option only changes the preview table. Calendar export keeps machine-readable times.</p>
             <p>Avoid importing the same ICS file multiple times to prevent duplicate prayer reminders.</p>
           </div>
         </section>
       )}
 
       <button
-        onClick={goHome}
+        onClick={goIqama}
         className="w-full bg-gray-800 rounded-lg p-4 text-center font-semibold hover:bg-gray-700"
       >
-        Back to Home
+        Generate Local Iqama
       </button>
     </div>
   )

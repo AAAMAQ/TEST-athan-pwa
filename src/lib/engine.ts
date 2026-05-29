@@ -322,7 +322,7 @@ export async function getEnginePrayerRows(options: EnginePrayerOptions): Promise
 export function generateEngineIcs(options: EngineIcsOptions): string {
   const included = options.includePrayers ?? {
     Fajr: true,
-    Sunrise: false,
+    Sunrise: true,
     Dhuhr: true,
     Asr: true,
     Maghrib: true,

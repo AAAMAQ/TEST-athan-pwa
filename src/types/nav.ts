@@ -17,4 +17,4 @@ export type Screen =
   | 'SalahTracker'
   | 'PrayerMonth'
   | 'AthanEngine'
-  
+  | 'Iqama'

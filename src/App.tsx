@@ -11,12 +11,12 @@ import Vision from './features/Vision'
 import NeedHelp from './features/NeedHelp'
 import SalahTracker from './features/SalahTracker'
 import AthanEngine from './features/AthanEngine'
-
+import Iqama from './features/Iqama'
 
 // Primary tabs shown in the bottom nav (keep it simple for mobile)
 const primaryTabs = ['Home', 'Prayer', 'Settings'] as const
 type Tab = typeof primaryTabs[number]
-type Screen = 'Home' | 'Prayer' | 'Settings' | 'Qibla' | 'Quran' | 'Credits' | 'Privacy' | 'Vision' | 'NeedHelp' | 'SalahTracker' | 'PrayerMonth' | 'AthanEngine'
+type Screen = 'Home' | 'Prayer' | 'Settings' | 'Qibla' | 'Quran' | 'Credits' | 'Privacy' | 'Vision' | 'NeedHelp' | 'SalahTracker' | 'PrayerMonth' | 'AthanEngine' | 'Iqama'
 
 export default function App() {
   // App should open on Home, not Prayer
@@ -67,6 +67,7 @@ export default function App() {
         {/* Optional future screens */} 
         {screen === 'SalahTracker' && <SalahTracker />}
         {screen === 'AthanEngine' && <AthanEngine go={go} />}
+        {screen === 'Iqama' && <Iqama go={go} />}
       </main>
 
       {/* Bottom navigation — ONLY three tabs */}
