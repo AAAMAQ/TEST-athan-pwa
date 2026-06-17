@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
 import { fetchSurahs, fetchSurah } from '../lib/quran'
+import {
+  loadQuranProgress,
+  markAyahRead,
+  toggleFavoriteSurah,
+  type QuranProgress
+} from '../lib/quranProgress'
 
 // Local view types (UI only)
 type SurahItem = {
@@ -32,6 +38,7 @@ export default function Quran(){
   const [loading,setLoading]=useState(false)
   const [edition,setEdition]=useState('en.asad')
   const [mode,setMode]=useState<ViewMode>(() => (localStorage.getItem('quranViewMode') as ViewMode) || 'ar-en')
+  const [progress,setProgress]=useState<QuranProgress>(() => loadQuranProgress())
   useEffect(()=>{ localStorage.setItem('quranViewMode', mode) },[mode])
 
   const [bookmarks,setBookmarks]=useState<Set<string>>(()=>parseBookmarks())
@@ -85,10 +92,45 @@ useEffect(() => {
     setBookmarks(next); saveBookmarks(next)
   }
   const clearBookmarks = () => { const empty = new Set<string>(); setBookmarks(empty); saveBookmarks(empty) }
+  const selectedSurah = surahs.find((surah) => surah.number === selected)
+  const continueSurah = progress.lastReadSurah ? surahs.find((surah) => surah.number === progress.lastReadSurah) : null
+  const currentSurahProgress = selected ? progress.perSurahProgress[String(selected)] : null
+
+  function recordRead(ayah: number) {
+    if (!selected) return
+    setProgress(markAyahRead(selected, ayah, selectedSurah?.englishName))
+  }
+
+  function continueReading() {
+    if (!progress.lastReadSurah) return
+    setSelected(progress.lastReadSurah)
+    window.setTimeout(() => {
+      const target = document.getElementById(`ayah-${progress.lastReadSurah}-${progress.lastReadAyah}`)
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 500)
+  }
+
+  function toggleFavorite() {
+    if (!selected) return
+    setProgress(toggleFavoriteSurah(selected))
+  }
 
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold text-center">Quran</h2>
+      {progress.lastReadSurah && progress.lastReadAyah && (
+        <section className="bg-gray-800 rounded-lg p-4 space-y-3">
+          <div>
+            <h3 className="font-semibold text-teal-300">Continue Reading</h3>
+            <p className="text-sm text-gray-300">
+              {continueSurah ? `Surah ${continueSurah.englishName}` : `Surah ${progress.lastReadSurah}`}, Ayah {progress.lastReadAyah}
+            </p>
+          </div>
+          <button type="button" onClick={continueReading} className="rounded bg-teal-600 hover:bg-teal-500 px-4 py-2 font-semibold">
+            Continue
+          </button>
+        </section>
+      )}
       <div className="flex flex-wrap items-center justify-center gap-2">
         <div className="flex items-center gap-1 bg-gray-800 rounded px-2 py-1">
           <span className="text-sm text-gray-300">Font</span>
@@ -110,6 +152,13 @@ useEffect(() => {
         >
           Clear Bookmarks
         </button>
+        <button
+          className={`px-3 py-1 rounded ${selected && progress.favoriteSurahs.includes(selected) ? 'bg-yellow-600 text-white' : 'bg-gray-700 text-gray-200'}`}
+          onClick={toggleFavorite}
+          title="Favorite this Surah"
+        >
+          {selected && progress.favoriteSurahs.includes(selected) ? 'Favorited' : 'Favorite Surah'}
+        </button>
       </div>
       <div className="flex justify-center gap-2">
         <button
@@ -127,9 +176,14 @@ useEffect(() => {
       </div>
       <div className="flex gap-2 justify-center">
         <select className="text-black" value={selected ?? 1} onChange={e=>setSelected(parseInt(e.target.value))}>
-          {surahs.map(s=>
-            <option key={s.number} value={s.number}>{s.number}. {s.englishName} — {s.name} ({s.numberOfAyahs})</option>
-          )}
+          {surahs.map(s => {
+            const saved = progress.perSurahProgress[String(s.number)]
+            return (
+              <option key={s.number} value={s.number}>
+                {s.number}. {s.englishName} — {s.name} ({s.numberOfAyahs}){saved ? ` · Last read: Ayah ${saved.lastAyah}` : ''}
+              </option>
+            )
+          })}
         </select>
         {mode==='ar-en' && (
           <select className="text-black" value={edition} onChange={e=>setEdition(e.target.value)}>
@@ -140,6 +194,11 @@ useEffect(() => {
           </select>
         )}
       </div>
+      {currentSurahProgress && (
+        <p className="text-center text-xs text-teal-300">
+          Last read in this Surah: Ayah {currentSurahProgress.lastAyah}
+        </p>
+      )}
       {loading ? <p className="text-center">Loading surah…</p> : (
         mode === 'ar'
           ? (
@@ -152,7 +211,7 @@ useEffect(() => {
                   </p>
                 )}
                 {(showOnlyBookmarks ? arabic.filter(a=>isBookmarked(selected!, a.number)) : arabic).map(a=> (
-                  <p key={a.number} dir="rtl" className="flex items-start gap-2">
+                  <p key={a.number} id={`ayah-${selected}-${a.number}`} dir="rtl" className="flex items-start gap-2">
                     <button
                       aria-label="Bookmark ayah"
                       className={`mt-1 ${isBookmarked(selected!, a.number) ? 'text-yellow-400' : 'text-gray-500'}`}
@@ -160,6 +219,14 @@ useEffect(() => {
                       title={isBookmarked(selected!, a.number) ? 'Remove bookmark' : 'Add bookmark'}
                     >
                       {isBookmarked(selected!, a.number) ? '★' : '☆'}
+                    </button>
+                    <button
+                      aria-label="Mark ayah read"
+                      className="mt-1 text-teal-400"
+                      onClick={()=>recordRead(a.number)}
+                      title="Mark as last read"
+                    >
+                      ✓
                     </button>
                     <span>
                       {a.text} <span className="text-sm text-gray-400">﴿{a.number}﴾</span>
@@ -180,7 +247,7 @@ useEffect(() => {
                     </p>
                   )}
                   {(showOnlyBookmarks ? arabic.filter(a=>isBookmarked(selected!, a.number)) : arabic).map(a=> (
-                    <p key={a.number} dir="rtl" className="flex items-start gap-2">
+                    <p key={a.number} id={`ayah-${selected}-${a.number}`} dir="rtl" className="flex items-start gap-2">
                       <button
                         aria-label="Bookmark ayah"
                         className={`mt-1 ${isBookmarked(selected!, a.number) ? 'text-yellow-400' : 'text-gray-500'}`}
@@ -188,6 +255,14 @@ useEffect(() => {
                         title={isBookmarked(selected!, a.number) ? 'Remove bookmark' : 'Add bookmark'}
                       >
                         {isBookmarked(selected!, a.number) ? '★' : '☆'}
+                      </button>
+                      <button
+                        aria-label="Mark ayah read"
+                        className="mt-1 text-teal-400"
+                        onClick={()=>recordRead(a.number)}
+                        title="Mark as last read"
+                      >
+                        ✓
                       </button>
                       <span>
                         {a.text} <span className="text-sm text-gray-400">﴿{a.number}﴾</span>
@@ -209,6 +284,14 @@ useEffect(() => {
                       >
                         {isBookmarked(selected!, e.number) ? '★' : '☆'}
                       </button>
+                      <button
+                        aria-label="Mark ayah read"
+                        className="mt-0.5 text-teal-400"
+                        onClick={()=>recordRead(e.number)}
+                        title="Mark as last read"
+                      >
+                        ✓
+                      </button>
                       <span>
                         <span className="text-sm text-gray-400">{e.number}.</span> {e.text}
                       </span>
@@ -218,6 +301,23 @@ useEffect(() => {
               </div>
             </div>
           )
+      )}
+      {progress.recentlyRead.length > 0 && (
+        <section className="bg-gray-800 rounded-lg p-4 space-y-3">
+          <h3 className="font-semibold text-teal-300">Recently Read</h3>
+          <div className="space-y-2 text-sm">
+            {progress.recentlyRead.map((item) => (
+              <button
+                key={`${item.surah}-${item.ayah}-${item.updatedAt}`}
+                type="button"
+                onClick={() => setSelected(item.surah)}
+                className="block w-full rounded bg-gray-900 hover:bg-gray-700 px-3 py-2 text-left"
+              >
+                {item.title ? `Surah ${item.title}` : `Surah ${item.surah}`}, Ayah {item.ayah}
+              </button>
+            ))}
+          </div>
+        </section>
       )}
       <p className="text-xs text-gray-400 text-center">First load needs network; afterwards it's cached offline. Bookmarks & view settings are saved on this device.</p>
     </div>

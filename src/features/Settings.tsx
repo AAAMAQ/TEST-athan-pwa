@@ -20,7 +20,11 @@ const REMINDER_OFFSETS: number[] = [5, 10, 15, 20, 30, 45, 50]
 const LS_OFFSET = 'reminderOffsetMin'
 const LS_ISHA_FIXED = 'ishaFixedTime'
 
-export default function Settings(){
+type Props = {
+  go?: (screen: string) => void
+}
+
+export default function Settings({ go }: Props){
   const [s,setS]=useState(loadSettings())
   const [language,setLanguage]=useState<AppLanguage>(() => loadLanguage())
   const [offsetMin,setOffsetMin]=useState<number>(()=> {
@@ -71,6 +75,11 @@ export default function Settings(){
     const ics = buildIcsForDates(all, `Athan Reminders (${label})`, 'ATHAN-PWA', effectiveOffset)
     downloadICS(`athan-reminders-${label}_${loc.coords.latitude.toFixed(3)}_${loc.coords.longitude.toFixed(3)}.ics`, ics)
     setMsg(`Downloaded .ics for ${label}.`)
+  }
+
+  function openBackupRestore() {
+    if (go) go('BackupRestore')
+    else window.location.hash = '#BackupRestore'
   }
 
   return (
@@ -209,6 +218,20 @@ export default function Settings(){
           matches your new city.
           
         </p>
+      </section>
+
+      <section className="space-y-3 p-3 rounded-md bg-gray-800">
+        <h3 className="font-semibold">Local Data</h3>
+        <p className="text-xs text-gray-400">
+          Export, import, or reset Athan PWA data stored on this device.
+        </p>
+        <button
+          type="button"
+          onClick={openBackupRestore}
+          className="px-3 py-2 rounded bg-teal-600 hover:bg-teal-500 font-semibold"
+        >
+          Backup and Restore
+        </button>
       </section>
     </div>
   )

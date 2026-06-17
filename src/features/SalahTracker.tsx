@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { computePrayerTimes } from '../lib/prayer'
 import { getUserLocation } from '../lib/location'
+import { calculateSalahInsights, type SalahLogStore } from '../lib/salahInsights'
 
 type PrayerKey = 'Fajr' | 'Dhuhr' | 'Asr' | 'Maghrib' | 'Isha' 
 const PRAYERS: PrayerKey[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', ] as const
@@ -128,6 +129,7 @@ export default function SalahTracker() {
   const monthLabel = month.toLocaleString(undefined, { month: 'long', year: 'numeric' })
   const selectedLabel = selected.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
   const selectedScore = PRAYERS.reduce((n, p) => n + (dayLog[p] ? 1 : 0), 0)
+  const insights = useMemo(() => calculateSalahInsights(store as SalahLogStore), [store])
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
@@ -208,8 +210,72 @@ export default function SalahTracker() {
         </div>
       </div>
 
+      <section className="bg-gray-800 rounded-lg p-4 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Insights</h2>
+          <p className="text-xs text-gray-400">Your Salah tracker data stays on this device.</p>
+        </div>
+
+        {insights.daysTracked === 0 ? (
+          <p className="rounded bg-gray-900 p-3 text-sm text-gray-300">
+            Start marking your prayers to see streaks and completion insights here.
+          </p>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <InsightCard title="Current Streak" value={`${insights.currentStreak} days`} />
+              <InsightCard title="Best Streak" value={`${insights.bestStreak} days`} />
+              <InsightCard title="This Week" value={`${insights.thisWeekPercent}%`} />
+              <InsightCard title="This Month" value={`${insights.thisMonthPercent}%`} />
+              <InsightCard title="Most Missed" value={insights.mostMissedPrayer ?? '—'} />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded bg-gray-900 p-3">
+                <div className="font-semibold text-teal-300">Best Week</div>
+                <div className="text-sm text-gray-300">{insights.bestWeekLabel} · {insights.bestWeekPercent}%</div>
+              </div>
+              <div className="rounded bg-gray-900 p-3">
+                <div className="font-semibold text-teal-300">Best Month</div>
+                <div className="text-sm text-gray-300">{insights.bestMonthLabel} · {insights.bestMonthPercent}%</div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-semibold">Prayer Completion Rates</h3>
+              {PRAYERS.map((prayer) => (
+                <div key={prayer} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span>{prayer}</span>
+                    <span className="text-gray-400">{insights.prayerCompletionRates[prayer]}%</span>
+                  </div>
+                  <div className="h-2 rounded bg-gray-700">
+                    <div className="h-2 rounded bg-teal-500" style={{ width: `${insights.prayerCompletionRates[prayer]}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded bg-gray-900 p-3 text-sm text-gray-300 space-y-1">
+              {insights.missedPatterns.length > 0
+                ? insights.missedPatterns.map((pattern) => <p key={pattern}>{pattern}</p>)
+                : <p>Keep logging prayers to reveal more useful patterns.</p>}
+            </div>
+          </>
+        )}
+      </section>
+
       {/* Stats for this month */}
       <MonthStats store={store} month={month} />
+    </div>
+  )
+}
+
+function InsightCard({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="rounded bg-gray-900 p-3">
+      <div className="text-xs text-gray-400">{title}</div>
+      <div className="text-xl font-bold text-teal-300">{value}</div>
     </div>
   )
 }

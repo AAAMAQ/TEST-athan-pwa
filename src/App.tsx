@@ -12,12 +12,16 @@ import NeedHelp from './features/NeedHelp'
 import SalahTracker from './features/SalahTracker'
 import AthanEngine from './features/AthanEngine'
 import Iqama from './features/Iqama'
+import More from './features/More'
+import MasjidMode from './features/MasjidMode'
+import BackupRestore from './features/BackupRestore'
+import RamadanMode from './features/RamadanMode'
 import { loadLanguage, t, type AppLanguage } from './lib/i18n'
 
 // Primary tabs shown in the bottom nav (keep it simple for mobile)
 const primaryTabs = ['Home', 'Prayer', 'Settings'] as const
 type Tab = typeof primaryTabs[number]
-type Screen = 'Home' | 'Prayer' | 'Settings' | 'Qibla' | 'Quran' | 'Credits' | 'Privacy' | 'Vision' | 'NeedHelp' | 'SalahTracker' | 'PrayerMonth' | 'AthanEngine' | 'Iqama'
+type Screen = 'Home' | 'Prayer' | 'Settings' | 'Qibla' | 'Quran' | 'Credits' | 'Privacy' | 'Vision' | 'NeedHelp' | 'SalahTracker' | 'PrayerMonth' | 'AthanEngine' | 'Iqama' | 'More' | 'MasjidMode' | 'BackupRestore' | 'RamadanMode'
 
 export default function App() {
   // App should open on Home, not Prayer
@@ -56,7 +60,11 @@ export default function App() {
     SalahTracker: 'Salah Tracker',
     PrayerMonth: t('prayerTimes', language),
     AthanEngine: t('advancedAthan', language),
-    Iqama: t('iqama', language)
+    Iqama: t('iqama', language),
+    More: 'More',
+    MasjidMode: 'Masjid Mode',
+    BackupRestore: 'Backup and Restore',
+    RamadanMode: 'Ramadan Mode'
   }
 
   const tabLabels: Record<Tab, string> = {
@@ -87,7 +95,7 @@ export default function App() {
       <main className="flex-1 overflow-auto p-4">
         {screen === 'Home' && <Home go={go} />}
         {screen === 'Prayer' && <PrayerTimes />}
-        {screen === 'Settings' && <Settings />}
+        {screen === 'Settings' && <Settings go={go} />}
         {screen === 'Qibla' && <Qibla />}
         {screen === 'Quran' && <Quran />}
         {screen === 'Credits' && <Credits go={go} />}
@@ -98,6 +106,10 @@ export default function App() {
         {screen === 'SalahTracker' && <SalahTracker />}
         {screen === 'AthanEngine' && <AthanEngine go={go} />}
         {screen === 'Iqama' && <Iqama go={go} />}
+        {screen === 'More' && <More go={go} />}
+        {screen === 'MasjidMode' && <MasjidMode go={go} />}
+        {screen === 'BackupRestore' && <BackupRestore go={go} />}
+        {screen === 'RamadanMode' && <RamadanMode go={go} />}
       </main>
 
       {/* Bottom navigation — ONLY three tabs */}

@@ -5,6 +5,7 @@ import { formatHijri } from '../lib/hijri'
 import { loadLanguage, t, type AppLanguage } from '../lib/i18n'
 import { getUserLocation } from '../lib/location'
 import { computePrayerTimes, nextPrayer } from '../lib/prayer'
+import { getRamadanDay, getRamadanStatus, loadRamadanSettings } from '../lib/ramadan'
 
 
 const fmtTime = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -43,6 +44,10 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
   const [next, setNext] = useState<{ name: string; time: Date } | null>(null)
   const [nextAt, setNextAt] = useState<string>('') // human local time for next prayer
   const [countdown, setCountdown] = useState('—:—:—')
+  const [ramadanDay] = useState(() => {
+    const settings = loadRamadanSettings()
+    return getRamadanStatus(settings) === 'active' ? getRamadanDay(settings) : null
+  })
 
   // refresh hijri each mount and again at local midnight
   useEffect(() => {
@@ -139,12 +144,24 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
         </div>
       </div>
 
+      {ramadanDay && (
+        <button
+          type="button"
+          onClick={() => go('RamadanMode')}
+          className="w-full rounded-lg border border-teal-700 bg-teal-950/40 p-4 text-left hover:bg-teal-900/40"
+        >
+          <div className="text-sm text-teal-200">Ramadan Mode</div>
+          <div className="text-xl font-bold">Ramadan Day {ramadanDay}</div>
+          <div className="text-xs text-gray-300">Open Ramadan Mode for Suhoor, Iftar, fasting, and Eid tracking.</div>
+        </button>
+      )}
+
       {/* Simple vertical actions */}
       <div className="space-y-3">
         <HomeButton label={t('quran', language)} onClick={() => go('Quran')} />
         <HomeButton label={t('qibla', language)} onClick={() => go('Qibla')} />
-        <HomeButton label="Track Salah" onClick={() => go('SalahTracker')} />
         <HomeButton label={t('advancedAthan', language)} onClick={()=> go('AthanEngine')}/>
+        <HomeButton label="More" onClick={() => go('More')} />
         <HomeButton label={t('credits', language)} onClick={() => go('Credits')} />
         
       </div>

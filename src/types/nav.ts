@@ -18,3 +18,7 @@ export type Screen =
   | 'PrayerMonth'
   | 'AthanEngine'
   | 'Iqama'
+  | 'More'
+  | 'MasjidMode'
+  | 'BackupRestore'
+  | 'RamadanMode'
