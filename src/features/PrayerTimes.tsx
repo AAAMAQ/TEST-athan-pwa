@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getUserLocation } from '../lib/location.ts'
+import { loadLanguage, t, type AppLanguage } from '../lib/i18n'
 import { computePrayerTimes, nextPrayer } from '../lib/prayer'
 import PrayerMonth from './PrayerMonth.tsx'
 
@@ -8,7 +9,17 @@ type T = Partial<Record<'fajr'|'sunrise'|'dhuhr'|'asr'|'maghrib'|'isha', Date>>
 export default function PrayerTimes() {
   const [times,setTimes]=useState<T>({})
   const [next,setNext]=useState<{name:string;time:Date}|null>(null)
+  const [language] = useState<AppLanguage>(() => loadLanguage())
   const [countdown,setCountdown]=useState(''); const [showMonth,setShowMonth]=useState(false)
+  const isFriday = new Date().getDay() === 5
+  const prayerLabels: Record<keyof T, string> = {
+    fajr: t('fajr', language),
+    sunrise: t('sunrise', language),
+    dhuhr: isFriday ? t('jumuah', language) : t('dhuhr', language),
+    asr: t('asr', language),
+    maghrib: t('maghrib', language),
+    isha: t('isha', language)
+  }
 
   useEffect(()=>{(async()=>{
     const loc=await getUserLocation(); if(!loc) return
@@ -26,17 +37,17 @@ export default function PrayerTimes() {
 
   return (
     <div className="space-y-4 text-center">
-      <h2 className="text-2xl font-bold">Prayer Times (Today)</h2>
+      <h2 className="text-2xl font-bold">{t('prayerTimes', language)} (Today)</h2>
       {Object.keys(times).length===0 ? <p>Requesting location…</p> : (
         <table className="table mx-auto">
           <tbody>
             {(['fajr','sunrise','dhuhr','asr','maghrib','isha'] as const).map(k=>(
-              <tr key={k}><td className="pr-4 capitalize">{k}</td><td>{times[k]!.toLocaleTimeString()}</td></tr>
+              <tr key={k}><td className="pr-4">{prayerLabels[k]}</td><td>{times[k]!.toLocaleTimeString()}</td></tr>
             ))}
           </tbody>
         </table>
       )}
-      {next && <div className="text-teal-300">Next: <span className="capitalize">{next.name}</span> in <strong>{countdown}</strong></div>}
+      {next && <div className="text-teal-300">Next: <span>{next.name === 'dhuhr' && isFriday ? t('jumuah', language) : prayerLabels[next.name as keyof T]}</span> in <strong>{countdown}</strong></div>}
       <div><button onClick={()=>setShowMonth(true)} className="px-3 py-1 rounded bg-teal-600 hover:bg-teal-500">View Prayer Times for Month</button></div>
     </div>
   )

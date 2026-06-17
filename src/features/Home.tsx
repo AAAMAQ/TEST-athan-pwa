@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import type { Screen } from '../types/nav'
 import { formatHijri } from '../lib/hijri'
+import { loadLanguage, t, type AppLanguage } from '../lib/i18n'
 import { getUserLocation } from '../lib/location'
 import { computePrayerTimes, nextPrayer } from '../lib/prayer'
 
@@ -37,6 +38,7 @@ const reverseGeocodeLocation = async (latitude: number, longitude: number) => {
 
 export default function Home({ go }: { go: (tab: Screen) => void }) {
   const [hijri, setHijri] = useState(formatHijri())
+  const [language] = useState<AppLanguage>(() => loadLanguage())
   const [locationLabel, setLocationLabel] = useState('Location not available')
   const [next, setNext] = useState<{ name: string; time: Date } | null>(null)
   const [nextAt, setNextAt] = useState<string>('') // human local time for next prayer
@@ -128,7 +130,7 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
       <div className="flex items-center justify-center gap-4 bg-gray-800 rounded-xl p-4">
         <div className="text-4xl leading-none">🕰️</div>
         <div className="text-center">
-          <div className="text-lg text-gray-300">Next Prayer</div>
+          <div className="text-lg text-gray-300">Next {t('prayer', language)}</div>
           <div className="text-3xl md:text-4xl font-extrabold tracking-wide">
             {next ? next.name.toUpperCase() : '—'}
           </div>
@@ -139,11 +141,11 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
 
       {/* Simple vertical actions */}
       <div className="space-y-3">
-        <HomeButton label="Quran" onClick={() => go('Quran')} />
-        <HomeButton label="Qibla" onClick={() => go('Qibla')} />
+        <HomeButton label={t('quran', language)} onClick={() => go('Quran')} />
+        <HomeButton label={t('qibla', language)} onClick={() => go('Qibla')} />
         <HomeButton label="Track Salah" onClick={() => go('SalahTracker')} />
-        <HomeButton label="Advanced Athan" onClick={()=> go('AthanEngine')}/>
-        <HomeButton label="Credits" onClick={() => go('Credits')} />
+        <HomeButton label={t('advancedAthan', language)} onClick={()=> go('AthanEngine')}/>
+        <HomeButton label={t('credits', language)} onClick={() => go('Credits')} />
         
       </div>
     </div>

@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import PrayerTimes from './features/PrayerTimes'
 import Qibla from './features/Qibla'
 import Quran from './features/Quran'
@@ -12,6 +12,7 @@ import NeedHelp from './features/NeedHelp'
 import SalahTracker from './features/SalahTracker'
 import AthanEngine from './features/AthanEngine'
 import Iqama from './features/Iqama'
+import { loadLanguage, t, type AppLanguage } from './lib/i18n'
 
 // Primary tabs shown in the bottom nav (keep it simple for mobile)
 const primaryTabs = ['Home', 'Prayer', 'Settings'] as const
@@ -22,6 +23,13 @@ export default function App() {
   // App should open on Home, not Prayer
   const [tab, setTab] = useState<Tab>('Home')
   const [screen, setScreen] = useState<Screen>('Home')
+  const [language, setLanguage] = useState<AppLanguage>(() => loadLanguage())
+
+  useEffect(() => {
+    const onLanguageChange = () => setLanguage(loadLanguage())
+    window.addEventListener('athan-language-change', onLanguageChange)
+    return () => window.removeEventListener('athan-language-change', onLanguageChange)
+  }, [])
 
   const isPrimary = (s: Screen): s is Tab => (primaryTabs as readonly string[]).includes(s)
 
@@ -35,7 +43,29 @@ export default function App() {
     if (isPrimary(target)) setTab(target)
   }
 
-  const title = screen === 'AthanEngine' ? 'Advanced Athan' : screen
+  const screenLabels: Record<Screen, string> = {
+    Home: t('home', language),
+    Prayer: t('prayerTimes', language),
+    Settings: t('settings', language),
+    Qibla: t('qibla', language),
+    Quran: t('quran', language),
+    Credits: t('credits', language),
+    Privacy: 'Privacy',
+    Vision: 'Vision',
+    NeedHelp: t('needHelp', language),
+    SalahTracker: 'Salah Tracker',
+    PrayerMonth: t('prayerTimes', language),
+    AthanEngine: t('advancedAthan', language),
+    Iqama: t('iqama', language)
+  }
+
+  const tabLabels: Record<Tab, string> = {
+    Home: t('home', language),
+    Prayer: t('prayer', language),
+    Settings: t('settings', language)
+  }
+
+  const title = screenLabels[screen]
 
   return (
     <div className="flex flex-col h-full">
@@ -78,7 +108,7 @@ export default function App() {
             onClick={() => goTab(t)}
             className={`flex-1 py-2 ${tab === t ? 'text-teal-400' : 'text-gray-400'}`}
           >
-            {t}
+            {tabLabels[t]}
           </button>
         ))}
       </nav>

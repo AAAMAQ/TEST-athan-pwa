@@ -7,6 +7,7 @@ type Props = {
 
 export default function Credits({ go }: Props) {
   const [shared, setShared] = useState<string | null>(null)
+  const [updateStatus, setUpdateStatus] = useState('')
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://example.com'
   const buyMeACoffee = 'https://buymeacoffee.com/bigmaqstudio'
@@ -33,6 +34,29 @@ export default function Credits({ go }: Props) {
     }
   }
 
+  async function updateApp() {
+    setUpdateStatus('Checking for update…')
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(registrations.map((registration) => registration.unregister()))
+      }
+
+      if ('caches' in window) {
+        const cacheNames = await caches.keys()
+        await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)))
+      }
+
+      setUpdateStatus('Reloading latest version…')
+      window.setTimeout(() => window.location.reload(), 250)
+    } catch (error) {
+      console.error('Failed to update app', error)
+      setUpdateStatus('Could not fully clear cache. Reloading anyway.')
+      window.setTimeout(() => window.location.reload(), 600)
+    }
+  }
+
   const goOrHash = (screen: string) => {
     if (go) return go(screen)
     // Fallback: update hash so App can optionally listen in future
@@ -49,9 +73,9 @@ export default function Credits({ go }: Props) {
       <section className="bg-gray-800 rounded-lg p-4 space-y-2">
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-gray-200">
           <p><span className="font-semibold">App:</span> Athan PWA App</p>
-          <p><span className="font-semibold">Version:</span> v2.02.0</p>
-          <p><span className="font-semibold">Date of Current Version:</span> May 29, 2026</p>
-          <p><span className="font-semibold">Latest Update:</span> Iqama Times early support added inside Advanced Athan.</p>
+          <p><span className="font-semibold">Version:</span> v2.03.0</p>
+          <p><span className="font-semibold">Date of Current Version:</span> June 17, 2026</p>
+          <p><span className="font-semibold">Latest Update:</span> PWA icon refresh, app update button, Iqama calendar export, Jumu’ah reminders, Friday prayer label, and first language preference support.</p>
           <p><span className="font-semibold">Company:</span> BiG MAQ Studio</p>
           <p><span className="font-semibold">Copyright:</span> The content of this software is copyrighted © {new Date().getFullYear()} by BiG MAQ Studio. All rights reserved. The software code and accompanying documentation are protected by copyright law, prohibiting unauthorized reproduction or distribution without the explicit permission of the copyright owner.</p>
         </div>
@@ -68,6 +92,24 @@ export default function Credits({ go }: Props) {
         >
           Buy Me a Coffee
         </a>
+      </section>
+
+      <section className="bg-gray-800 rounded-lg p-4 space-y-3">
+        <h2 className="text-xl font-semibold">Update</h2>
+        <p className="text-gray-300 text-sm">
+          Check for the latest version of Athan PWA and reload the app when available.
+        </p>
+        <button
+          type="button"
+          onClick={updateApp}
+          className="px-4 py-2 rounded bg-teal-600 hover:bg-teal-500 text-white font-semibold"
+        >
+          Update
+        </button>
+        {updateStatus && <p className="text-sm text-teal-300">{updateStatus}</p>}
+        <p className="text-xs text-gray-400">
+          This refreshes the app shell and caches only. Your prayer settings, Iqama settings, Quran bookmarks, and tracker data stay on this device.
+        </p>
       </section>
 
       <section className="bg-gray-800 rounded-lg p-4 space-y-3">
@@ -108,6 +150,25 @@ export default function Credits({ go }: Props) {
         </p>
 
         <div className="space-y-3 text-sm text-gray-200">
+          <article className="border-l-2 border-teal-500 pl-3 space-y-1">
+            <p className="text-xs text-gray-400">June 17, 2026</p>
+            <h3 className="font-semibold text-teal-300">Version v2.03.0 release</h3>
+            <p>
+              Refreshed the PWA icon set with proper install, maskable, Apple touch, and favicon assets. Added a Credits
+              page Update button so users can clear the app shell cache and reload the latest deployed version without
+              deleting local settings or tracker data.
+            </p>
+            <p>
+              Added Iqama calendar export for local device prayer times, including date ranges, included-prayer controls,
+              fixed-time and Athan-offset rules, and optional Friday morning Jumu’ah reminders. The local Prayer Times
+              screen now shows Jumu’ah instead of Dhuhr on Fridays as a display-only label.
+            </p>
+            <p>
+              Started basic language preference support with English, Arabic, Urdu, and Hindi for core navigation and
+              prayer labels, saved privately on the device for future translation expansion.
+            </p>
+          </article>
+
           <article className="border-l-2 border-teal-500 pl-3 space-y-1">
             <p className="text-xs text-gray-400">May 29, 2026</p>
             <h3 className="font-semibold text-teal-300">Iqama Times update</h3>

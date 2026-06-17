@@ -39,18 +39,31 @@ export default defineConfig({
           }
         ]
       },
-      includeAssets: ['icons/icon-192.png', 'icons/icon-512.png'],
+      includeAssets: [
+        'favicon.ico',
+        'favicon-16x16.png',
+        'favicon-32x32.png',
+        'apple-touch-icon.png',
+        'icons/icon-192x192.png',
+        'icons/icon-512x512.png',
+        'icons/maskable-icon-192x192.png',
+        'icons/maskable-icon-512x512.png'
+      ],
       manifest: {
         name: 'Athan PWA',
         short_name: 'Athan',
-        start_url: '.',
-        scope: '.',
+        description: 'A lightweight, privacy-first Islamic utility for prayer times, Qibla, Quran, and Salah tracking.',
+        id: '/',
+        start_url: '/',
+        scope: '/',
         display: 'standalone',
-        background_color: '#0d9488',
+        background_color: '#071824',
         theme_color: '#0d9488',
         icons: [
-          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }
+          { src: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icons/maskable-icon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+          { src: '/icons/maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       }
     })

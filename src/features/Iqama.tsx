@@ -5,21 +5,31 @@ import { computePrayerTimes } from '../lib/prayer'
 import { getUserLocation } from '../lib/location'
 import {
   calculateIqamaDay,
+  clampJumuahTime,
+  DEFAULT_INCLUDED_IQAMA_PRAYERS,
+  downloadIqamaIcs,
+  formatDateInput,
   formatIqamaTime,
+  getIqamaRowsForDateRange,
   getIqamaRuleSummary,
   IQAMA_OFFSET_PRESETS,
   IQAMA_PRAYERS,
   isValidTimeInput,
+  loadJumuahReminderSettings,
   loadIqamaSettings,
+  parseDateInput,
   resetIqamaSettings,
+  saveJumuahReminderSettings,
   saveIqamaSettings,
   updateIqamaRule,
   type AthanTimesForIqama,
+  type IqamaIncludedPrayers,
   type IqamaMode,
   type IqamaOffsetPreset,
   type IqamaPrayerName,
   type IqamaSettings,
-  type IqamaTimeFormat
+  type IqamaTimeFormat,
+  type JumuahReminderSettings
 } from '../lib/iqama'
 
 type Props = {
@@ -146,8 +156,14 @@ export default function Iqama({ go }: Props) {
   const [settings, setSettings] = useState<IqamaSettings>(() => loadIqamaSettings())
   const [timeFormat, setTimeFormat] = useState<IqamaTimeFormat>('12h')
   const [athanTimes, setAthanTimes] = useState<AthanTimesForIqama>({})
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null)
   const [date] = useState(() => new Date())
+  const [fromDate, setFromDate] = useState(() => formatDateInput(new Date()))
+  const [toDate, setToDate] = useState(() => formatDateInput(new Date()))
+  const [includedPrayers, setIncludedPrayers] = useState<IqamaIncludedPrayers>(() => ({ ...DEFAULT_INCLUDED_IQAMA_PRAYERS }))
+  const [jumuahReminder, setJumuahReminder] = useState<JumuahReminderSettings>(() => loadJumuahReminderSettings())
   const [status, setStatus] = useState('Loading today\'s local prayer times…')
+  const [downloadStatus, setDownloadStatus] = useState('')
   const [savedMessage, setSavedMessage] = useState('')
 
   useEffect(() => {
@@ -166,6 +182,7 @@ export default function Iqama({ go }: Props) {
         const todayAthanTimes = makeAthanTimesForIqama(coords, date)
         if (cancelled) return
 
+        setCoords(coords)
         setAthanTimes(todayAthanTimes)
         setStatus('Using today\'s local prayer times from your current location.')
       } catch {
@@ -186,6 +203,25 @@ export default function Iqama({ go }: Props) {
     return calculateIqamaDay(athanTimes, settings)
   }, [athanTimes, settings])
 
+  const fromDateObject = useMemo(() => parseDateInput(fromDate), [fromDate])
+  const toDateObject = useMemo(() => parseDateInput(toDate), [toDate])
+
+  const exportRows = useMemo(() => {
+    if (!coords) return []
+
+    return getIqamaRowsForDateRange({
+      coords,
+      fromDate: fromDateObject,
+      toDate: toDateObject,
+      settings,
+      includedPrayers,
+      includeJumuah: jumuahReminder.include,
+      jumuahTime: jumuahReminder.time
+    })
+  }, [coords, fromDateObject, includedPrayers, jumuahReminder.include, jumuahReminder.time, settings, toDateObject])
+
+  const includedPrayerNames = IQAMA_PRAYERS.filter((prayer) => includedPrayers[prayer])
+
 function goBack() {
   if (go) {
     go('AthanEngine')
@@ -202,14 +238,69 @@ function goBack() {
 
   function saveSettings() {
     saveIqamaSettings(settings)
+    saveJumuahReminderSettings(jumuahReminder)
     setSavedMessage('Iqama settings saved on this device.')
     setTimeout(() => setSavedMessage(''), 2400)
   }
 
   function resetSettings() {
     setSettings(resetIqamaSettings())
+    setJumuahReminder({ include: false, time: '09:00' })
+    saveJumuahReminderSettings({ include: false, time: '09:00' })
     setSavedMessage('Iqama settings reset to defaults.')
     setTimeout(() => setSavedMessage(''), 2400)
+  }
+
+  function setQuickRange(days: number) {
+    const start = new Date()
+    const end = new Date(start)
+    end.setDate(start.getDate() + Math.max(0, days - 1))
+    setFromDate(formatDateInput(start))
+    setToDate(formatDateInput(end))
+  }
+
+  function toggleIncludedPrayer(prayer: IqamaPrayerName) {
+    setIncludedPrayers((current) => ({
+      ...current,
+      [prayer]: !current[prayer]
+    }))
+  }
+
+  function updateJumuahReminder(next: Partial<JumuahReminderSettings>) {
+    setJumuahReminder((current) => {
+      const updated = {
+        ...current,
+        ...next,
+        time: next.time !== undefined ? clampJumuahTime(next.time) : current.time
+      }
+      saveJumuahReminderSettings(updated)
+      return updated
+    })
+  }
+
+  function downloadIqamaCalendar() {
+    if (!coords) {
+      setDownloadStatus('Location permission is required before downloading Iqama ICS.')
+      return
+    }
+
+    try {
+      saveIqamaSettings(settings)
+      saveJumuahReminderSettings(jumuahReminder)
+      downloadIqamaIcs({
+        coords,
+        fromDate: fromDateObject,
+        toDate: toDateObject,
+        settings,
+        includedPrayers,
+        includeJumuah: jumuahReminder.include,
+        jumuahTime: jumuahReminder.time
+      })
+      setDownloadStatus(`Downloaded ${exportRows.length} calendar events.`)
+    } catch (error) {
+      console.error('Failed to download Iqama ICS', error)
+      setDownloadStatus('Could not download the Iqama ICS file. Please try again.')
+    }
   }
 
   function setOffsetPreset(prayer: IqamaPrayerName, preset: IqamaOffsetPreset) {
@@ -473,6 +564,115 @@ function goBack() {
 
         {savedMessage && (
           <p className="rounded bg-gray-900 p-3 text-sm text-teal-300">{savedMessage}</p>
+        )}
+      </section>
+
+      <section className="bg-gray-800 rounded-lg p-4 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Iqama Calendar Export</h2>
+          <p className="text-sm text-gray-400">
+            Download Iqama reminders as a calendar .ics file using your current device location.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="space-y-1 text-sm">
+            <span className="font-semibold">From date</span>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(event) => setFromDate(event.target.value)}
+              className="w-full rounded bg-gray-900 border border-gray-700 px-3 py-2 text-white"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-semibold">To date</span>
+            <input
+              type="date"
+              value={toDate}
+              min={fromDate}
+              onChange={(event) => setToDate(event.target.value)}
+              className="w-full rounded bg-gray-900 border border-gray-700 px-3 py-2 text-white"
+            />
+          </label>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <button type="button" onClick={() => setQuickRange(1)} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 text-sm font-semibold">Today</button>
+          <button type="button" onClick={() => setQuickRange(7)} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 text-sm font-semibold">7 days</button>
+          <button type="button" onClick={() => setQuickRange(30)} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 text-sm font-semibold">30 days</button>
+          <button type="button" onClick={() => setQuickRange(365)} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 text-sm font-semibold">1 year</button>
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="font-semibold">Included prayers</h3>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {IQAMA_PRAYERS.map((prayer) => (
+              <button
+                key={prayer}
+                type="button"
+                onClick={() => toggleIncludedPrayer(prayer)}
+                aria-pressed={includedPrayers[prayer]}
+                className={`rounded border px-3 py-2 text-sm font-semibold ${includedPrayers[prayer] ? 'border-teal-400 bg-teal-700 text-white' : 'border-gray-700 bg-gray-900 text-gray-300 hover:bg-gray-700'}`}
+              >
+                {includedPrayers[prayer] ? '✓ ' : ''}{PRAYER_LABELS[prayer]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded border border-gray-700 bg-gray-900 p-3 space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <label className="flex items-center gap-2 text-sm font-semibold">
+              <input
+                type="checkbox"
+                checked={jumuahReminder.include}
+                onChange={(event) => updateJumuahReminder({ include: event.target.checked })}
+                className="h-4 w-4 accent-teal-600"
+              />
+              Include Jumu’ah reminder
+            </label>
+
+            <label className="space-y-1 text-sm sm:w-48">
+              <span className="font-semibold">Reminder time</span>
+              <input
+                type="time"
+                min="05:00"
+                max="11:00"
+                value={jumuahReminder.time}
+                onChange={(event) => updateJumuahReminder({ time: event.target.value })}
+                className="w-full rounded bg-gray-800 border border-gray-700 px-3 py-2 text-white"
+              />
+            </label>
+          </div>
+          <p className="text-xs text-gray-400">
+            Jumu’ah reminders are generated only on Fridays between 5:00 AM and 11:00 AM.
+          </p>
+        </div>
+
+        <div className="rounded bg-gray-900 p-3 text-sm text-gray-300 space-y-1">
+          <p><span className="font-semibold text-white">Location:</span> Current device location</p>
+          <p><span className="font-semibold text-white">Date range:</span> {fromDate} to {toDate}</p>
+          <p><span className="font-semibold text-white">Number of events:</span> {exportRows.length}</p>
+          <p><span className="font-semibold text-white">File type:</span> Calendar .ics</p>
+          <p><span className="font-semibold text-white">Included prayers:</span> {includedPrayerNames.length ? includedPrayerNames.join(', ') : 'None'}{jumuahReminder.include ? ', Jumu’ah' : ''}</p>
+        </div>
+
+        <p className="rounded border border-yellow-700 bg-yellow-900/30 p-3 text-xs text-yellow-100">
+          Calendar alerts are handled by your calendar app, not Athan PWA. Avoid importing the same file multiple times or you may create duplicate reminders.
+        </p>
+
+        <button
+          type="button"
+          onClick={downloadIqamaCalendar}
+          disabled={!coords || exportRows.length === 0}
+          className="w-full rounded bg-teal-600 hover:bg-teal-500 disabled:cursor-not-allowed disabled:bg-gray-700 px-4 py-3 font-semibold text-white"
+        >
+          Download Iqama ICS
+        </button>
+
+        {downloadStatus && (
+          <p className="rounded bg-gray-900 p-3 text-sm text-teal-300">{downloadStatus}</p>
         )}
       </section>
 

@@ -10,6 +10,7 @@ import {
 } from '../lib/prayer'
 import { getUserLocation } from '../lib/location'
 import { buildIcsForDates, downloadICS } from '../lib/ics'
+import { LANGUAGE_LABELS, loadLanguage, saveLanguage, t, type AppLanguage } from '../lib/i18n'
 
 const METHODS: MethodKey[] = ['MuslimWorldLeague','UmmAlQura','Egyptian','Karachi','Dubai','Qatar','Kuwait','MoonsightingCommittee','NorthAmerica','Singapore','Tehran','Turkey']
 const MADHABS: MadhabKey[] = ['Shafi','Hanafi']
@@ -21,6 +22,7 @@ const LS_ISHA_FIXED = 'ishaFixedTime'
 
 export default function Settings(){
   const [s,setS]=useState(loadSettings())
+  const [language,setLanguage]=useState<AppLanguage>(() => loadLanguage())
   const [offsetMin,setOffsetMin]=useState<number>(()=> {
     // prefer new key; fallback to legacy key 'reminderMinutesBefore'
     const raw = localStorage.getItem(LS_OFFSET) ?? localStorage.getItem('reminderMinutesBefore') ?? '20'
@@ -33,6 +35,12 @@ export default function Settings(){
   function update<K extends keyof PrayerSettings>(k: K, v: PrayerSettings[K]) {
     const n: PrayerSettings = { ...s, [k]: v } as PrayerSettings
     setS(n); saveSettings(n)
+  }
+
+  function updateLanguage(value: AppLanguage) {
+    setLanguage(value)
+    saveLanguage(value)
+    setMsg('Language preference saved on this device.')
   }
 
   useEffect(()=>{ localStorage.setItem(LS_OFFSET, String(Math.max(1, offsetMin))) },[offsetMin])
@@ -67,9 +75,24 @@ export default function Settings(){
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold">Settings</h2>
+      <h2 className="text-2xl font-bold">{t('settings', language)}</h2>
 
       <section className="space-y-4 p-3 rounded-md bg-gray-800">
+        <div>
+          <label className="block mb-1">Language:</label>
+          <select
+            className="text-black px-2 py-1 rounded"
+            value={language}
+            onChange={e=>updateLanguage(e.target.value as AppLanguage)}
+          >
+            {(Object.keys(LANGUAGE_LABELS) as AppLanguage[]).map((key) => (
+              <option key={key} value={key}>{LANGUAGE_LABELS[key]}</option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            Core labels update first; more translations can be added gradually.
+          </p>
+        </div>
         <div><label className="block mb-1">Calculation Method:</label>
           <select className="text-black" value={s.method} onChange={e=>update('method', e.target.value as MethodKey)}>{METHODS.map(m=><option key={m} value={m}>{m}</option>)}</select>
         </div>

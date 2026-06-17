@@ -2,6 +2,8 @@
 
 // src/lib/iqama.ts
 
+import { computePrayerTimes, loadSettings, type PrayerSettings } from './prayer'
+
 export type IqamaPrayerName = 'Fajr' | 'Dhuhr' | 'Asr' | 'Maghrib' | 'Isha'
 
 export type IqamaMode = 'offset' | 'fixed'
@@ -36,11 +38,59 @@ export type IqamaResult = {
 
 export type IqamaDayResult = Record<IqamaPrayerName, IqamaResult>
 
+export type IqamaCalendarRow = {
+  prayer: IqamaPrayerName
+  title: string
+  date: Date
+  athanDate?: Date
+  rule: IqamaRule
+}
+
+export type JumuahCalendarRow = {
+  prayer: 'Jumuah'
+  title: 'Today is Jumu’ah'
+  date: Date
+}
+
+export type IqamaExportRow = IqamaCalendarRow | JumuahCalendarRow
+
+export type IqamaIncludedPrayers = Record<IqamaPrayerName, boolean>
+
+export type JumuahReminderSettings = {
+  include: boolean
+  time: string
+}
+
+export type IqamaDateRangeOptions = {
+  coords: { latitude: number; longitude: number }
+  fromDate: Date
+  toDate: Date
+  settings: IqamaSettings
+  includedPrayers: IqamaIncludedPrayers
+  prayerSettings?: PrayerSettings
+  includeJumuah?: boolean
+  jumuahTime?: string
+}
+
 const IQAMA_SETTINGS_KEY = 'athan.iqama.settings.v1'
+const JUMUAH_REMINDER_KEY = 'athan.iqama.jumuahReminder.v1'
 
 export const IQAMA_PRAYERS: IqamaPrayerName[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha']
 
 export const IQAMA_OFFSET_PRESETS: IqamaOffsetPreset[] = [5, 10, 20, 30, 60, 'custom']
+
+export const DEFAULT_INCLUDED_IQAMA_PRAYERS: IqamaIncludedPrayers = {
+  Fajr: true,
+  Dhuhr: true,
+  Asr: true,
+  Maghrib: true,
+  Isha: true
+}
+
+export const DEFAULT_JUMUAH_REMINDER: JumuahReminderSettings = {
+  include: false,
+  time: '09:00'
+}
 
 export const DEFAULT_IQAMA_SETTINGS: IqamaSettings = {
   Fajr: makeOffsetRule(20),
@@ -93,6 +143,32 @@ export function saveIqamaSettings(settings: IqamaSettings) {
 export function resetIqamaSettings() {
   saveIqamaSettings(DEFAULT_IQAMA_SETTINGS)
   return cloneIqamaSettings(DEFAULT_IQAMA_SETTINGS)
+}
+
+export function loadJumuahReminderSettings(): JumuahReminderSettings {
+  try {
+    const raw = localStorage.getItem(JUMUAH_REMINDER_KEY)
+    if (!raw) return { ...DEFAULT_JUMUAH_REMINDER }
+
+    const parsed = JSON.parse(raw) as Partial<JumuahReminderSettings>
+    return {
+      include: Boolean(parsed.include),
+      time: clampJumuahTime(parsed.time ?? DEFAULT_JUMUAH_REMINDER.time)
+    }
+  } catch {
+    return { ...DEFAULT_JUMUAH_REMINDER }
+  }
+}
+
+export function saveJumuahReminderSettings(settings: JumuahReminderSettings) {
+  try {
+    localStorage.setItem(JUMUAH_REMINDER_KEY, JSON.stringify({
+      include: settings.include,
+      time: clampJumuahTime(settings.time)
+    }))
+  } catch {
+    // Ignore localStorage failures so exporting still works.
+  }
 }
 
 export function updateIqamaRule(
@@ -231,6 +307,132 @@ export function getIqamaRuleSummary(rule: IqamaRule, format: IqamaTimeFormat = '
   return `${normalizedRule.offsetMinutes} minutes after Athan`
 }
 
+export function clampJumuahTime(time: string): string {
+  const parsed = parseTimeToMinutes(time)
+  if (parsed === null) return DEFAULT_JUMUAH_REMINDER.time
+
+  const min = 5 * 60
+  const max = 11 * 60
+  return minutesToTimeString(Math.max(min, Math.min(max, parsed)), '24h')
+}
+
+export function getIqamaRowsForDateRange(options: IqamaDateRangeOptions): IqamaExportRow[] {
+  const from = startOfLocalDay(options.fromDate)
+  const to = startOfLocalDay(options.toDate)
+  if (to < from) return []
+
+  const normalizedSettings = normalizeIqamaSettings(options.settings)
+  const prayerSettings = options.prayerSettings ?? loadSettings()
+  const rows: IqamaExportRow[] = []
+
+  for (const day of eachLocalDate(from, to)) {
+    const prayerTimes = computePrayerTimes(options.coords, day, prayerSettings)
+    const athanDates: Record<IqamaPrayerName, Date> = {
+      Fajr: prayerTimes.fajr,
+      Dhuhr: prayerTimes.dhuhr,
+      Asr: prayerTimes.asr,
+      Maghrib: prayerTimes.maghrib,
+      Isha: prayerTimes.isha
+    }
+
+    for (const prayer of IQAMA_PRAYERS) {
+      if (!options.includedPrayers[prayer]) continue
+
+      const rule = normalizedSettings[prayer]
+      const iqamaDate = calculateIqamaDate(athanDates[prayer], day, rule)
+      if (!iqamaDate) continue
+
+      rows.push({
+        prayer,
+        title: `${prayer} Iqama`,
+        date: iqamaDate,
+        athanDate: athanDates[prayer],
+        rule
+      })
+    }
+
+    if (options.includeJumuah && day.getDay() === 5) {
+      rows.push({
+        prayer: 'Jumuah',
+        title: 'Today is Jumu’ah',
+        date: dateWithLocalTime(day, clampJumuahTime(options.jumuahTime ?? DEFAULT_JUMUAH_REMINDER.time))
+      })
+    }
+  }
+
+  return rows.sort((a, b) => a.date.getTime() - b.date.getTime())
+}
+
+export function generateIqamaIcs(options: IqamaDateRangeOptions): string {
+  const rows = getIqamaRowsForDateRange(options)
+  const generatedAt = formatIcsDate(new Date())
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Athan PWA//Iqama ICS//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:Athan PWA Iqama',
+    'X-WR-CALDESC:Generated by Athan PWA'
+  ]
+
+  rows.forEach((row, index) => {
+    const start = formatIcsDate(row.date)
+    const end = formatIcsDate(new Date(row.date.getTime() + 10 * 60 * 1000))
+    const dateKey = formatDateInput(row.date)
+    const description = row.prayer === 'Jumuah'
+      ? 'Remember Surah Al-Kahf and prepare for Jumu’ah. Generated by Athan PWA.'
+      : 'Generated by Athan PWA. Calendar alerts are handled by your calendar app.'
+
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:${dateKey}-${row.prayer.toLowerCase()}-${index}@athan-pwa-iqama`,
+      `DTSTAMP:${generatedAt}`,
+      `DTSTART:${start}`,
+      `DTEND:${end}`,
+      foldIcsLine(`SUMMARY:${escapeIcsText(row.title)}`),
+      foldIcsLine(`DESCRIPTION:${escapeIcsText(description)}`),
+      'CATEGORIES:Athan-PWA,Iqama',
+      'END:VEVENT'
+    )
+  })
+
+  lines.push('END:VCALENDAR')
+  return lines.join('\r\n')
+}
+
+export function downloadIqamaIcs(options: IqamaDateRangeOptions) {
+  const ics = generateIqamaIcs(options)
+  const filename = makeIqamaIcsFilename(options.fromDate, options.toDate)
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+export function makeIqamaIcsFilename(fromDate: Date, toDate: Date) {
+  return `athan-pwa-iqama-${formatDateInput(fromDate)}-to-${formatDateInput(toDate)}.ics`
+}
+
+export function formatDateInput(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export function parseDateInput(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number)
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return startOfLocalDay(new Date())
+  }
+
+  return new Date(year, month - 1, day)
+}
+
 function normalizeIqamaSettings(value: unknown): IqamaSettings {
   const maybeSettings = value && typeof value === 'object' ? value as Partial<IqamaSettings> : {}
   const settings = {} as IqamaSettings
@@ -240,6 +442,76 @@ function normalizeIqamaSettings(value: unknown): IqamaSettings {
   }
 
   return settings
+}
+
+function calculateIqamaDate(athanDate: Date, day: Date, rule: IqamaRule): Date | null {
+  const normalizedRule = normalizeIqamaRule(rule)
+
+  if (normalizedRule.mode === 'fixed') {
+    if (!normalizedRule.fixedTime) return null
+    return dateWithLocalTime(day, normalizedRule.fixedTime)
+  }
+
+  return new Date(athanDate.getTime() + normalizedRule.offsetMinutes * 60 * 1000)
+}
+
+function dateWithLocalTime(day: Date, time: string): Date {
+  const parsed = parseTimeToMinutes(time) ?? 0
+  const date = startOfLocalDay(day)
+  date.setHours(Math.floor(parsed / 60), parsed % 60, 0, 0)
+  return date
+}
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function eachLocalDate(from: Date, to: Date): Date[] {
+  const days: Date[] = []
+  const current = startOfLocalDay(from)
+  const end = startOfLocalDay(to)
+
+  while (current <= end) {
+    days.push(new Date(current))
+    current.setDate(current.getDate() + 1)
+  }
+
+  return days
+}
+
+function formatIcsDate(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    'T',
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+    pad(date.getSeconds())
+  ].join('')
+}
+
+function escapeIcsText(value: string) {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\n/g, '\\n')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+}
+
+function foldIcsLine(line: string) {
+  const maxLength = 75
+  if (line.length <= maxLength) return line
+
+  const parts: string[] = []
+  let remaining = line
+  while (remaining.length > maxLength) {
+    parts.push(remaining.slice(0, maxLength))
+    remaining = ` ${remaining.slice(maxLength)}`
+  }
+  parts.push(remaining)
+  return parts.join('\r\n')
 }
 
 function normalizeIqamaRule(value: unknown): IqamaRule {
