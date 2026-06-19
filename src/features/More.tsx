@@ -1,26 +1,40 @@
+import { loadLanguage, t, type AppLanguage } from '../lib/i18n'
+
 type Props = {
   go?: (screen: string) => void
 }
 
 const items = [
   {
-    title: 'Masjid Mode',
-    description: 'Save local mosque Iqama and Jumu’ah schedules.',
+    titleKey: 'masjidMode',
+    descriptionKey: 'mosqueProfilesDescription',
     screen: 'MasjidMode'
   },
   {
-    title: 'Salah Tracker / Insights',
-    description: 'Review streaks, completion rates, and missed-prayer patterns.',
+    titleKey: 'salahTracker',
+    descriptionKey: 'salahInsightsDescription',
     screen: 'SalahTracker'
   },
   {
-    title: 'Ramadan Mode',
-    description: 'Track Ramadan dates, fasting status, Suhoor, Iftar, and Eid.',
+    titleKey: 'ramadanMode',
+    descriptionKey: 'ramadanModeDescription',
     screen: 'RamadanMode'
+  },
+  {
+    titleKey: 'savedCitiesTravel',
+    descriptionKey: 'savedCitiesDescription',
+    screen: 'SavedCities'
+  },
+  {
+    titleKey: 'backupRestore',
+    descriptionKey: 'backupRestoreDescription',
+    screen: 'BackupRestore'
   }
 ]
 
 export default function More({ go }: Props) {
+  const language: AppLanguage = loadLanguage()
+
   function open(screen: string) {
     if (go) go(screen)
     else window.location.hash = `#${screen}`
@@ -29,8 +43,8 @@ export default function More({ go }: Props) {
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-6">
       <header className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold">More</h1>
-        <p className="text-sm text-gray-300">Extra local-first tools for daily Islamic routines.</p>
+        <h1 className="text-2xl font-bold">{t('more', language)}</h1>
+        <p className="text-sm text-gray-300">{t('extraTools', language)}</p>
       </header>
 
       <section className="space-y-3">
@@ -41,8 +55,8 @@ export default function More({ go }: Props) {
             onClick={() => open(item.screen)}
             className="w-full rounded-lg bg-gray-800 hover:bg-gray-700 p-4 text-left"
           >
-            <div className="font-semibold text-teal-300">{item.title}</div>
-            <div className="text-sm text-gray-400">{item.description}</div>
+            <div className="font-semibold text-teal-300">{t(item.titleKey, language)}</div>
+            <div className="text-sm text-gray-400">{t(item.descriptionKey, language)}</div>
           </button>
         ))}
       </section>

@@ -1,0 +1,108 @@
+import { getUserLocation } from './location'
+
+export type AppLocation = {
+  latitude: number
+  longitude: number
+  city?: string
+  country?: string
+  countryCode?: string
+  timezone?: string
+  source: 'device' | 'saved-city' | 'manual'
+  updatedAt: string
+}
+
+export type LocationState = {
+  location: AppLocation | null
+  loading: boolean
+  permission: 'unknown' | 'granted' | 'denied' | 'unavailable'
+  error: string
+}
+
+export const LOCATION_CACHE_KEY = 'athan.location.cache.v1'
+
+let memoryState: LocationState = {
+  location: loadCachedLocation(),
+  loading: false,
+  permission: 'unknown',
+  error: ''
+}
+
+const listeners = new Set<(state: LocationState) => void>()
+
+export function subscribeLocation(listener: (state: LocationState) => void): () => void {
+  listeners.add(listener)
+  listener(memoryState)
+  return () => listeners.delete(listener)
+}
+
+export function getLocationState(): LocationState {
+  return memoryState
+}
+
+export async function refreshDeviceLocation(): Promise<LocationState> {
+  setState({ ...memoryState, loading: true, error: '' })
+  try {
+    const loc = await getUserLocation()
+    if (!loc) {
+      setState({ ...memoryState, loading: false, permission: 'denied', error: 'Location permission was not granted.' })
+      return memoryState
+    }
+    const next: AppLocation = {
+      latitude: loc.coords.latitude,
+      longitude: loc.coords.longitude,
+      source: 'device',
+      updatedAt: new Date().toISOString()
+    }
+    saveCachedLocation(next)
+    setState({ location: next, loading: false, permission: 'granted', error: '' })
+  } catch {
+    setState({ ...memoryState, loading: false, permission: 'denied', error: 'Could not refresh device location.' })
+  }
+  return memoryState
+}
+
+export function setManualLocation(location: AppLocation | null): LocationState {
+  if (location) saveCachedLocation(location)
+  setState({ location, loading: false, permission: location ? 'granted' : 'unknown', error: '' })
+  return memoryState
+}
+
+export function loadCachedLocation(): AppLocation | null {
+  try {
+    const raw = localStorage.getItem(LOCATION_CACHE_KEY)
+    if (!raw) return null
+    return normalizeLocation(JSON.parse(raw))
+  } catch {
+    return null
+  }
+}
+
+export function saveCachedLocation(location: AppLocation): void {
+  try {
+    localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(normalizeLocation(location)))
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function setState(next: LocationState) {
+  memoryState = next
+  listeners.forEach((listener) => listener(memoryState))
+}
+
+function normalizeLocation(value: unknown): AppLocation | null {
+  const maybe = value && typeof value === 'object' ? value as Partial<AppLocation> : null
+  const latitude = Number(maybe?.latitude)
+  const longitude = Number(maybe?.longitude)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
+  return {
+    latitude,
+    longitude,
+    city: typeof maybe?.city === 'string' ? maybe.city : undefined,
+    country: typeof maybe?.country === 'string' ? maybe.country : undefined,
+    countryCode: typeof maybe?.countryCode === 'string' ? maybe.countryCode : undefined,
+    timezone: typeof maybe?.timezone === 'string' ? maybe.timezone : undefined,
+    source: maybe?.source === 'saved-city' || maybe?.source === 'manual' ? maybe.source : 'device',
+    updatedAt: typeof maybe?.updatedAt === 'string' ? maybe.updatedAt : new Date().toISOString()
+  }
+}

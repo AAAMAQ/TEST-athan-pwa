@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 export default function NeedHelp() {
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-6">
@@ -14,6 +16,7 @@ export default function NeedHelp() {
         <a href="#downloadics" className="underline">Download and Set reminders via Calendar (.ics)</a>
         <a href="#whatsnew" className="underline">What&apos;s new?</a>
         <a href="#qibla" className="underline">Qibla not accurate?</a>
+        <a href="#v3features" className="underline">v3.0.0 features</a>
         <a href="#quran" className="underline">How to use the Quran</a>
         <a href="#bookmarks" className="underline">Quran bookmarks</a>
         <a href="#location" className="underline">Location & accuracy</a>
@@ -111,9 +114,53 @@ export default function NeedHelp() {
         </p>
       </section>
 
+      <section id="v3features" className="space-y-2">
+        <h2 className="text-xl font-semibold">v3.0.0 feature guide</h2>
+        <div className="space-y-3 text-sm text-gray-200">
+          <p>
+            <span className="font-semibold text-teal-300">Qibla:</span> Simple Mode gives a large readable compass,
+            turn guidance, Qibla bearing, device heading, distance to the Ka‘bah, and optional haptic feedback.
+            Advanced Mode keeps the older numeric compass view. If the compass feels wrong, use the calibration tips
+            below and check motion/orientation permission.
+          </p>
+          <p>
+            <span className="font-semibold text-teal-300">Quran:</span> Continue Reading, recently read, per-Surah
+            progress, favorite Surahs, and offline Quran controls are available in the Quran screen. Tafsir,
+            word-by-word, and recitation tabs are structured for future data/providers and show safe placeholder
+            messages when content is not bundled.
+          </p>
+          <p>
+            <span className="font-semibold text-teal-300">Saved Cities / Travel Mode:</span> Open More, then Saved
+            Cities. You can search or manually add a city, choose Auto country-based settings, override methods,
+            add personal correction offsets, preview prayer times, export ICS, export CSV, or share a plain-text
+            timetable. Auto settings are a starting point; always compare with a local masjid when needed.
+          </p>
+          <p>
+            <span className="font-semibold text-teal-300">Manual corrections:</span> Personal Custom Profiles store
+            minute offsets, such as Fajr +4 or Isha +5. They do not overwrite the built-in country defaults.
+          </p>
+          <p>
+            <span className="font-semibold text-teal-300">Masjid and Iqama:</span> Local Iqama can load rules from a
+            saved masjid profile. Imported settings can be edited without changing the masjid profile unless you tap
+            Save Changes Back to Masjid.
+          </p>
+          <p>
+            <span className="font-semibold text-teal-300">Backup, PWA, and privacy:</span> Backup and Restore exports
+            known Athan PWA localStorage data only. PWA status in Settings can show install/update/offline state.
+            Athan PWA does not upload your personal app data.
+          </p>
+          <p>
+            <span className="font-semibold text-teal-300">Friday and Salah:</span> Home shows Jumu’ah Mubarak on
+            Fridays, Prayer Times labels Dhuhr as Jumu’ah visually on Friday, and Salah Tracker includes supportive
+            streak/completion insights.
+          </p>
+        </div>
+      </section>
+
       {/* QIBLA HELP */}
       <section id="qibla" className="space-y-2">
         <h2 className="text-xl font-semibold">Qibla not working or feels inaccurate?</h2>
+        <QiblaStatusPanel />
         <p className="text-gray-200 text-sm">
           In this web app, the <span className="font-semibold">Qibla screen</span> shows the angle from your
           location to the Kaaba, for example: <span className="italic">“🕋 257° from True North”</span>. The arrow
@@ -694,6 +741,73 @@ export default function NeedHelp() {
           We are here to help with any technical issues or questions about using the app, so please don&apos;t hesitate to reach out if you need assistance.
         </p>
       </section>
+    </div>
+  )
+}
+
+type QiblaStoredStatus = {
+  compassSupported?: boolean
+  compassPermissionNeeded?: boolean
+  compassStatus?: string
+  locationStatus?: string
+  bearing?: number
+  heading?: number | null
+  aligned?: boolean
+}
+
+function QiblaStatusPanel() {
+  const [status, setStatus] = useState<QiblaStoredStatus | null>(null)
+  const [locationPermission, setLocationPermission] = useState('unknown')
+  const [orientationSupported, setOrientationSupported] = useState(false)
+
+  useEffect(() => {
+    setOrientationSupported(typeof window !== 'undefined' && 'DeviceOrientationEvent' in window)
+    try {
+      const raw = localStorage.getItem('athan.qibla.status.v1')
+      if (raw) setStatus(JSON.parse(raw) as QiblaStoredStatus)
+    } catch {
+      setStatus(null)
+    }
+
+    async function readPermission() {
+      try {
+        if ('permissions' in navigator) {
+          const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+          setLocationPermission(result.state)
+        }
+      } catch {
+        setLocationPermission('unknown')
+      }
+    }
+
+    readPermission()
+  }, [])
+
+  return (
+    <div className="rounded-lg border border-teal-800 bg-gray-900 p-4 space-y-3 text-sm">
+      <h3 className="font-semibold text-teal-300">Qibla compass status</h3>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <StatusLine label="Device orientation" value={orientationSupported ? 'Supported' : 'Not detected'} />
+        <StatusLine label="Compass permission needed" value={status?.compassPermissionNeeded ? 'Yes on this browser' : 'Usually no / unknown'} />
+        <StatusLine label="Compass status" value={status?.compassStatus ?? 'Open Qibla to check'} />
+        <StatusLine label="Location permission" value={status?.locationStatus ?? locationPermission} />
+        <StatusLine label="Bearing to Ka‘bah" value={typeof status?.bearing === 'number' ? `${status.bearing.toFixed(1)}°` : 'Open Qibla to calculate'} />
+        <StatusLine label="Current heading" value={typeof status?.heading === 'number' ? `${status.heading.toFixed(0)}°` : 'Waiting for compass'} />
+      </div>
+      <div className="space-y-1 text-gray-300">
+        <p>Move your phone in a figure-eight motion to improve compass calibration.</p>
+        <p>Keep your phone away from magnets, metal objects, speakers, and electronic devices that may affect compass accuracy.</p>
+        <p>If Qibla appears incorrect, check that location and motion/orientation permissions are enabled.</p>
+      </div>
+    </div>
+  )
+}
+
+function StatusLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded bg-gray-800 p-2">
+      <div className="text-xs text-gray-400">{label}</div>
+      <div className="font-semibold text-gray-100">{value}</div>
     </div>
   )
 }

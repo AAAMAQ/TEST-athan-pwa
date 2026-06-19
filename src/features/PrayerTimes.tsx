@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getUserLocation } from '../lib/location.ts'
 import { loadLanguage, t, type AppLanguage } from '../lib/i18n'
+import { refreshDeviceLocation } from '../lib/locationStore'
 import { computePrayerTimes, nextPrayer } from '../lib/prayer'
 import PrayerMonth from './PrayerMonth.tsx'
 
@@ -22,8 +22,8 @@ export default function PrayerTimes() {
   }
 
   useEffect(()=>{(async()=>{
-    const loc=await getUserLocation(); if(!loc) return
-    const pt=computePrayerTimes({latitude:loc.coords.latitude, longitude:loc.coords.longitude})
+    const loc=await refreshDeviceLocation(); if(!loc.location) return
+    const pt=computePrayerTimes({latitude:loc.location.latitude, longitude:loc.location.longitude})
     setTimes({fajr:pt.fajr,sunrise:pt.sunrise,dhuhr:pt.dhuhr,asr:pt.asr,maghrib:pt.maghrib,isha:pt.isha})
     setNext(nextPrayer(pt))
   })()},[])

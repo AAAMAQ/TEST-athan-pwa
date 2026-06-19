@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { Screen } from '../types/nav'
 import { formatHijri } from '../lib/hijri'
 import { loadLanguage, t, type AppLanguage } from '../lib/i18n'
-import { getUserLocation } from '../lib/location'
+import { refreshDeviceLocation } from '../lib/locationStore'
 import { computePrayerTimes, nextPrayer } from '../lib/prayer'
 import { getRamadanDay, getRamadanStatus, loadRamadanSettings } from '../lib/ramadan'
 
@@ -48,6 +48,7 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
     const settings = loadRamadanSettings()
     return getRamadanStatus(settings) === 'active' ? getRamadanDay(settings) : null
   })
+  const isFriday = new Date().getDay() === 5
 
   // refresh hijri each mount and again at local midnight
   useEffect(() => {
@@ -75,11 +76,11 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
     let cancelled = false
     ;(async () => {
       try {
-        const loc = await getUserLocation()
-        if (!loc || cancelled) return
+        const locState = await refreshDeviceLocation()
+        if (!locState.location || cancelled) return
 
-        const latitude = loc.coords.latitude
-        const longitude = loc.coords.longitude
+        const latitude = locState.location.latitude
+        const longitude = locState.location.longitude
 
         try {
           const readableLocation = await reverseGeocodeLocation(latitude, longitude)
@@ -128,6 +129,11 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
       <div className="text-center">
         <h1 className="text-2xl font-bold">Athan App</h1>
         <p className="text-sm text-gray-300">{hijri}</p>
+        {isFriday && (
+          <p className="mt-2 rounded-lg border border-teal-700 bg-teal-950/40 px-3 py-2 text-sm font-semibold text-teal-200">
+            Jumu’ah Mubarak
+          </p>
+        )}
         <p className="text-bold text-gray-400">{locationLabel}</p>
       </div>
 

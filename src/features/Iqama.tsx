@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { computePrayerTimes } from '../lib/prayer'
-import { getUserLocation } from '../lib/location'
+import { refreshDeviceLocation } from '../lib/locationStore'
 import {
   calculateIqamaDay,
   clampJumuahTime,
@@ -17,6 +17,8 @@ import {
   isValidTimeInput,
   loadJumuahReminderSettings,
   loadIqamaSettings,
+  makeFixedRule,
+  makeOffsetRule,
   parseDateInput,
   resetIqamaSettings,
   saveJumuahReminderSettings,
@@ -31,6 +33,7 @@ import {
   type IqamaTimeFormat,
   type JumuahReminderSettings
 } from '../lib/iqama'
+import { loadMasjidProfiles, updateMasjidProfile, type MasjidProfile } from '../lib/masjid'
 
 type Props = {
   go?: (screen: string) => void
@@ -152,6 +155,14 @@ function DigitSelect({ value, onChange, label }: { value: string; onChange: (dig
   )
 }
 
+function iqamaToMasjidRule(rule: IqamaSettings[IqamaPrayerName]) {
+  return {
+    mode: rule.mode,
+    fixedTime: rule.fixedTime,
+    offsetMinutes: rule.offsetMinutes
+  }
+}
+
 export default function Iqama({ go }: Props) {
   const [settings, setSettings] = useState<IqamaSettings>(() => loadIqamaSettings())
   const [timeFormat, setTimeFormat] = useState<IqamaTimeFormat>('12h')
@@ -165,18 +176,20 @@ export default function Iqama({ go }: Props) {
   const [status, setStatus] = useState('Loading today\'s local prayer times…')
   const [downloadStatus, setDownloadStatus] = useState('')
   const [savedMessage, setSavedMessage] = useState('')
+  const [masjidProfiles, setMasjidProfiles] = useState<MasjidProfile[]>(() => loadMasjidProfiles())
+  const [selectedMasjidId, setSelectedMasjidId] = useState('')
 
   useEffect(() => {
     let cancelled = false
 
     async function loadTodayPrayerTimes() {
       try {
-        const location = await getUserLocation()
-        if (!location || cancelled) return
+        const location = await refreshDeviceLocation()
+        if (!location.location || cancelled) return
 
         const coords = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude
+          latitude: location.location.latitude,
+          longitude: location.location.longitude
         }
 
         const todayAthanTimes = makeAthanTimesForIqama(coords, date)
@@ -221,6 +234,7 @@ export default function Iqama({ go }: Props) {
   }, [coords, fromDateObject, includedPrayers, jumuahReminder.include, jumuahReminder.time, settings, toDateObject])
 
   const includedPrayerNames = IQAMA_PRAYERS.filter((prayer) => includedPrayers[prayer])
+  const selectedMasjid = masjidProfiles.find((profile) => profile.id === selectedMasjidId) ?? null
 
 function goBack() {
   if (go) {
@@ -241,6 +255,34 @@ function goBack() {
     saveJumuahReminderSettings(jumuahReminder)
     setSavedMessage('Iqama settings saved on this device.')
     setTimeout(() => setSavedMessage(''), 2400)
+  }
+
+  function loadFromMasjid() {
+    if (!selectedMasjid) return
+    const imported = { ...settings }
+    for (const prayer of IQAMA_PRAYERS) {
+      const rule = selectedMasjid.iqamaRules[prayer]
+      imported[prayer] = rule.mode === 'fixed' ? makeFixedRule(rule.fixedTime) : makeOffsetRule(rule.offsetMinutes)
+    }
+    setSettings(imported)
+    setSavedMessage(`Loaded Iqama rules from ${selectedMasjid.name || 'saved masjid'}. Edit freely, then save if needed.`)
+  }
+
+  function saveBackToMasjid() {
+    if (!selectedMasjid) return
+    const nextProfile: MasjidProfile = {
+      ...selectedMasjid,
+      iqamaRules: {
+        Fajr: iqamaToMasjidRule(settings.Fajr),
+        Dhuhr: iqamaToMasjidRule(settings.Dhuhr),
+        Asr: iqamaToMasjidRule(settings.Asr),
+        Maghrib: iqamaToMasjidRule(settings.Maghrib),
+        Isha: iqamaToMasjidRule(settings.Isha)
+      }
+    }
+    const next = updateMasjidProfile(nextProfile, masjidProfiles)
+    setMasjidProfiles(next)
+    setSavedMessage(`Saved current Iqama rules back to ${selectedMasjid.name || 'saved masjid'}.`)
   }
 
   function resetSettings() {
@@ -346,6 +388,33 @@ function goBack() {
         </p>
         <p className="text-xs text-gray-400">{formatDateForTitle(date)}</p>
       </header>
+
+      <section className="bg-gray-800 rounded-lg p-4 space-y-3">
+        <h2 className="text-lg font-semibold">Use Saved Masjid</h2>
+        {masjidProfiles.length === 0 ? (
+          <p className="text-sm text-gray-400">No saved masjid profiles yet. Add one from More → Masjid Mode.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+            <select
+              value={selectedMasjidId}
+              onChange={(event) => setSelectedMasjidId(event.target.value)}
+              className="rounded bg-gray-900 border border-gray-700 px-3 py-2"
+            >
+              <option value="">Use Current Iqama Settings</option>
+              {masjidProfiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>{profile.name || 'Unnamed Masjid'} {profile.city ? `· ${profile.city}` : ''}</option>
+              ))}
+            </select>
+            <button type="button" onClick={loadFromMasjid} disabled={!selectedMasjid} className="rounded bg-teal-600 hover:bg-teal-500 disabled:bg-gray-700 px-3 py-2 font-semibold">
+              Load From Saved Masjid
+            </button>
+            <button type="button" onClick={saveBackToMasjid} disabled={!selectedMasjid} className="rounded bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700 px-3 py-2 font-semibold">
+              Save Changes Back to Masjid
+            </button>
+          </div>
+        )}
+        {selectedMasjid?.notes && <p className="text-xs text-gray-400">{selectedMasjid.notes}</p>}
+      </section>
 
       <section className="bg-gray-800 rounded-lg p-4 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

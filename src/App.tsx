@@ -16,12 +16,13 @@ import More from './features/More'
 import MasjidMode from './features/MasjidMode'
 import BackupRestore from './features/BackupRestore'
 import RamadanMode from './features/RamadanMode'
+import SavedCities from './features/SavedCities'
 import { loadLanguage, t, type AppLanguage } from './lib/i18n'
 
 // Primary tabs shown in the bottom nav (keep it simple for mobile)
 const primaryTabs = ['Home', 'Prayer', 'Settings'] as const
 type Tab = typeof primaryTabs[number]
-type Screen = 'Home' | 'Prayer' | 'Settings' | 'Qibla' | 'Quran' | 'Credits' | 'Privacy' | 'Vision' | 'NeedHelp' | 'SalahTracker' | 'PrayerMonth' | 'AthanEngine' | 'Iqama' | 'More' | 'MasjidMode' | 'BackupRestore' | 'RamadanMode'
+type Screen = 'Home' | 'Prayer' | 'Settings' | 'Qibla' | 'Quran' | 'Credits' | 'Privacy' | 'Vision' | 'NeedHelp' | 'SalahTracker' | 'PrayerMonth' | 'AthanEngine' | 'Iqama' | 'More' | 'MasjidMode' | 'BackupRestore' | 'RamadanMode' | 'SavedCities'
 
 export default function App() {
   // App should open on Home, not Prayer
@@ -54,17 +55,18 @@ export default function App() {
     Qibla: t('qibla', language),
     Quran: t('quran', language),
     Credits: t('credits', language),
-    Privacy: 'Privacy',
-    Vision: 'Vision',
+    Privacy: t('privacy', language),
+    Vision: t('vision', language),
     NeedHelp: t('needHelp', language),
-    SalahTracker: 'Salah Tracker',
+    SalahTracker: t('salahTracker', language),
     PrayerMonth: t('prayerTimes', language),
     AthanEngine: t('advancedAthan', language),
     Iqama: t('iqama', language),
-    More: 'More',
-    MasjidMode: 'Masjid Mode',
-    BackupRestore: 'Backup and Restore',
-    RamadanMode: 'Ramadan Mode'
+    More: t('more', language),
+    MasjidMode: t('masjidMode', language),
+    BackupRestore: t('backupRestore', language),
+    RamadanMode: t('ramadanMode', language),
+    SavedCities: t('savedCities', language)
   }
 
   const tabLabels: Record<Tab, string> = {
@@ -84,7 +86,7 @@ export default function App() {
             className="px-3 py-1 rounded bg-gray-700 text-gray-200"
             onClick={() => { setScreen('Home'); setTab('Home') }}
           >
-            ← Back
+            ← {t('back', language)}
           </button>
         ) : <span className="w-[64px]" />}
         <h1 className="text-xl font-bold text-center flex-1">{title}</h1>
@@ -110,6 +112,7 @@ export default function App() {
         {screen === 'MasjidMode' && <MasjidMode go={go} />}
         {screen === 'BackupRestore' && <BackupRestore go={go} />}
         {screen === 'RamadanMode' && <RamadanMode go={go} />}
+        {screen === 'SavedCities' && <SavedCities go={go} />}
       </main>
 
       {/* Bottom navigation — ONLY three tabs */}

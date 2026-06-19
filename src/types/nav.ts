@@ -22,3 +22,4 @@ export type Screen =
   | 'MasjidMode'
   | 'BackupRestore'
   | 'RamadanMode'
+  | 'SavedCities'

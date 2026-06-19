@@ -1,7 +1,7 @@
 // src/features/SalahTracker.tsx
 import { useEffect, useMemo, useState } from 'react'
 import { computePrayerTimes } from '../lib/prayer'
-import { getUserLocation } from '../lib/location'
+import { refreshDeviceLocation } from '../lib/locationStore'
 import { calculateSalahInsights, type SalahLogStore } from '../lib/salahInsights'
 
 type PrayerKey = 'Fajr' | 'Dhuhr' | 'Asr' | 'Maghrib' | 'Isha' 
@@ -60,9 +60,9 @@ export default function SalahTracker() {
   useEffect(() => {
     (async () => {
       try {
-        const loc = await getUserLocation()
-        if (!loc) return
-        const pt = computePrayerTimes({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })
+        const loc = await refreshDeviceLocation()
+        if (!loc.location) return
+        const pt = computePrayerTimes({ latitude: loc.location.latitude, longitude: loc.location.longitude })
         const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         setTodayTimes({
           Fajr: fmt(pt.fajr),

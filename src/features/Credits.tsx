@@ -73,9 +73,9 @@ export default function Credits({ go }: Props) {
       <section className="bg-gray-800 rounded-lg p-4 space-y-2">
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-gray-200">
           <p><span className="font-semibold">App:</span> Athan PWA App</p>
-          <p><span className="font-semibold">Version:</span> v2.03.0</p>
-          <p><span className="font-semibold">Date of Current Version:</span> June 17, 2026</p>
-          <p><span className="font-semibold">Latest Update:</span> PWA icon refresh, app update button, Iqama calendar export, Jumu’ah reminders, Friday prayer label, and first language preference support.</p>
+          <p><span className="font-semibold">Version:</span> v3.0.0</p>
+          <p><span className="font-semibold">Date of Current Version:</span> June 19, 2026</p>
+          <p><span className="font-semibold">Latest Update:</span> Unified v3.0.0 app update with Qibla modes, Saved Cities and Travel Mode, Quran progress/offline controls, Masjid/Iqama integration, PWA status, timetable exports, and v3 help updates.</p>
           <p><span className="font-semibold">Company:</span> BiG MAQ Studio</p>
           <p><span className="font-semibold">Copyright:</span> The content of this software is copyrighted © {new Date().getFullYear()} by BiG MAQ Studio. All rights reserved. The software code and accompanying documentation are protected by copyright law, prohibiting unauthorized reproduction or distribution without the explicit permission of the copyright owner.</p>
         </div>
@@ -150,6 +150,22 @@ export default function Credits({ go }: Props) {
         </p>
 
         <div className="space-y-3 text-sm text-gray-200">
+          <article className="border-l-2 border-teal-500 pl-3 space-y-1">
+            <p className="text-xs text-gray-400">June 19, 2026</p>
+            <h3 className="font-semibold text-teal-300">Version v3.0.0 — Unified app update</h3>
+            <p>
+              Version v3.0.0 brings major improvements across Athan PWA, including Saved Cities and Travel Mode,
+              automatic country-based prayer settings, manual prayer corrections, smarter Quran progress, Quran offline
+              support controls, improved Qibla modes and calibration guidance, Masjid and Iqama integration, expanded
+              calendar and timetable exports, Salah insights, Friday Jumu’ah updates, PWA improvements, visual
+              consistency, performance optimization, and bug fixes.
+            </p>
+            <p>
+              Some advanced Quran study features, such as bundled Tafsir, word-by-word data, and recitation providers,
+              now have safe UI structure but still need real datasets or provider configuration in a future update.
+            </p>
+          </article>
+
           <article className="border-l-2 border-teal-500 pl-3 space-y-1">
             <p className="text-xs text-gray-400">June 17, 2026</p>
             <h3 className="font-semibold text-teal-300">Version v2.03.0 release</h3>

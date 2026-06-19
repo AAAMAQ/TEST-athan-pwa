@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getUserLocation } from '../lib/location'
+import { refreshDeviceLocation } from '../lib/locationStore'
 import { computePrayerTimes } from '../lib/prayer'
 const PRAYERS = ['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha'] as const
 type PrayerName = typeof PRAYERS[number]
@@ -10,11 +10,11 @@ export default function PrayerMonth() {
   const [month,setMonth]=useState(today.getMonth()) // 0..11
   const [rows,setRows]=useState<Row[]>([])
   useEffect(()=>{(async()=>{
-    const loc=await getUserLocation(); if(!loc) return
+    const loc=await refreshDeviceLocation(); if(!loc.location) return
     const results: Row[] = []; const count=new Date(year,month+1,0).getDate()
     for(let d=1; d<=count; d++){
       const date=new Date(year,month,d)
-      const pt=computePrayerTimes({latitude:loc.coords.latitude, longitude:loc.coords.longitude}, date)
+      const pt=computePrayerTimes({latitude:loc.location.latitude, longitude:loc.location.longitude}, date)
       const fmt=(dt:Date)=>dt.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
       results.push({ Date: String(d), Fajr: fmt(pt.fajr), Sunrise: fmt(pt.sunrise), Dhuhr: fmt(pt.dhuhr), Asr: fmt(pt.asr), Maghrib: fmt(pt.maghrib), Isha: fmt(pt.isha) } as Row)
     } setRows(results)

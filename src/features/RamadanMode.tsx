@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getUserLocation } from '../lib/location'
+import { refreshDeviceLocation } from '../lib/locationStore'
 import { computePrayerTimes } from '../lib/prayer'
 import {
   formatDate,
@@ -42,11 +42,11 @@ export default function RamadanMode({ go }: Props) {
 
     async function loadTimes() {
       try {
-        const location = await getUserLocation()
-        if (!location || cancelled) return
+        const location = await refreshDeviceLocation()
+        if (!location.location || cancelled) return
         const pt = computePrayerTimes({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude
+          latitude: location.location.latitude,
+          longitude: location.location.longitude
         }, today)
         setTimesStatus('Using your current device location for Fajr and Maghrib.')
 

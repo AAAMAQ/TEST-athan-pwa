@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'react'
 import { fetchSurahs, fetchSurah } from '../lib/quran'
 import {
+  clearQuranProgress,
   loadQuranProgress,
   markAyahRead,
   toggleFavoriteSurah,
   type QuranProgress
 } from '../lib/quranProgress'
+import { downloadQuranOffline, loadQuranOfflineStatus, removeQuranOfflineData, type QuranOfflineStatus } from '../lib/quranOffline'
+import {
+  RECITERS,
+  fetchRecitationAudio,
+  getRecitationMessage,
+  getTafsirMessage,
+  getWordByWordMessage,
+  splitArabicWords,
+  type QuranStudyMode
+} from '../lib/quranProviders'
 
 // Local view types (UI only)
 type SurahItem = {
@@ -39,6 +50,12 @@ export default function Quran(){
   const [edition,setEdition]=useState('en.asad')
   const [mode,setMode]=useState<ViewMode>(() => (localStorage.getItem('quranViewMode') as ViewMode) || 'ar-en')
   const [progress,setProgress]=useState<QuranProgress>(() => loadQuranProgress())
+  const [studyMode,setStudyMode]=useState<QuranStudyMode>('translation')
+  const [offlineStatus,setOfflineStatus]=useState<QuranOfflineStatus>(() => loadQuranOfflineStatus())
+  const [offlineMessage,setOfflineMessage]=useState('')
+  const [selectedReciter,setSelectedReciter]=useState(RECITERS[0]?.id ?? 'ar.alafasy')
+  const [audioUrl,setAudioUrl]=useState('')
+  const [audioStatus,setAudioStatus]=useState('')
   useEffect(()=>{ localStorage.setItem('quranViewMode', mode) },[mode])
 
   const [bookmarks,setBookmarks]=useState<Set<string>>(()=>parseBookmarks())
@@ -95,10 +112,14 @@ useEffect(() => {
   const selectedSurah = surahs.find((surah) => surah.number === selected)
   const continueSurah = progress.lastReadSurah ? surahs.find((surah) => surah.number === progress.lastReadSurah) : null
   const currentSurahProgress = selected ? progress.perSurahProgress[String(selected)] : null
+  const fallbackStudyAyah = selected === progress.lastReadSurah ? progress.lastReadAyah : 1
+  const studyAyahNumber = currentSurahProgress?.lastAyah ?? fallbackStudyAyah ?? 1
+  const studyAyah = arabic.find((ayah) => ayah.number === studyAyahNumber) ?? arabic[0] ?? null
+  const studyWords = splitArabicWords(studyAyah?.text ?? '')
 
   function recordRead(ayah: number) {
     if (!selected) return
-    setProgress(markAyahRead(selected, ayah, selectedSurah?.englishName))
+    setProgress(markAyahRead(selected, ayah, selectedSurah?.englishName, selectedSurah?.numberOfAyahs))
   }
 
   function continueReading() {
@@ -113,6 +134,44 @@ useEffect(() => {
   function toggleFavorite() {
     if (!selected) return
     setProgress(toggleFavoriteSurah(selected))
+  }
+
+  async function downloadOffline() {
+    try {
+      setOfflineMessage('Preparing Quran offline download…')
+      const status = await downloadQuranOffline((item) => {
+        setOfflineMessage(`Downloading Surahs: ${item.current} of ${item.total}`)
+      })
+      setOfflineStatus(status)
+      setOfflineMessage(status.complete ? 'Quran available offline.' : 'Offline Quran data is not complete.')
+    } catch {
+      setOfflineMessage('Offline download was interrupted. Please retry when online.')
+      setOfflineStatus(loadQuranOfflineStatus())
+    }
+  }
+
+  async function removeOffline() {
+    const status = await removeQuranOfflineData()
+    setOfflineStatus(status)
+    setOfflineMessage('Offline Quran text removed. Bookmarks and progress were kept.')
+  }
+
+  async function loadRecitation() {
+    if (!selected || !studyAyah) return
+    try {
+      setAudioStatus('Loading recitation audio…')
+      const audio = await fetchRecitationAudio(selected, studyAyah.number, selectedReciter)
+      setAudioUrl(audio.audio)
+      setAudioStatus(`Ready: ${audio.reciter}, Surah ${selected}, Ayah ${studyAyah.number}`)
+    } catch {
+      setAudioUrl('')
+      setAudioStatus('Could not load recitation audio. Check your connection and try again.')
+    }
+  }
+
+  function clearProgress() {
+    if (!window.confirm('Clear Quran reading progress on this device? Bookmarks will stay.')) return
+    setProgress(clearQuranProgress())
   }
 
   return (
@@ -159,6 +218,31 @@ useEffect(() => {
         >
           {selected && progress.favoriteSurahs.includes(selected) ? 'Favorited' : 'Favorite Surah'}
         </button>
+        <button className="px-3 py-1 rounded bg-gray-700 text-gray-200" onClick={clearProgress}>
+          Clear Progress
+        </button>
+      </div>
+      <section className="rounded-lg bg-gray-800 p-4 space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-semibold text-teal-300">Offline Quran</h3>
+            <p className="text-xs text-gray-400">
+              {offlineStatus.complete ? 'Quran available offline.' : offlineStatus.available ? `Offline Quran data is not complete (${offlineStatus.downloadedSurahs}/${offlineStatus.totalSurahs}).` : 'Offline Quran data is not complete.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={downloadOffline} className="rounded bg-teal-600 hover:bg-teal-500 px-3 py-2 text-sm font-semibold">Download Quran for Offline Use</button>
+            <button type="button" onClick={removeOffline} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 text-sm font-semibold">Remove Offline Quran Data</button>
+          </div>
+        </div>
+        {offlineMessage && <p className="rounded bg-gray-900 p-2 text-xs text-teal-300">{offlineMessage}</p>}
+      </section>
+      <div className="flex flex-wrap justify-center gap-2">
+        {(['translation', 'tafsir', 'word-by-word', 'recitation'] as QuranStudyMode[]).map((item) => (
+          <button key={item} type="button" onClick={() => setStudyMode(item)} className={`rounded px-3 py-2 text-sm font-semibold capitalize ${studyMode === item ? 'bg-teal-600' : 'bg-gray-700 hover:bg-gray-600'}`}>
+            {item === 'word-by-word' ? 'Word by Word' : item}
+          </button>
+        ))}
       </div>
       <div className="flex justify-center gap-2">
         <button
@@ -197,7 +281,64 @@ useEffect(() => {
       {currentSurahProgress && (
         <p className="text-center text-xs text-teal-300">
           Last read in this Surah: Ayah {currentSurahProgress.lastAyah}
+          {currentSurahProgress.progressPercent ? ` · Progress: ${currentSurahProgress.progressPercent}%` : ''}
         </p>
+      )}
+      {studyMode !== 'translation' && (
+        <section className="rounded-lg bg-gray-800 p-4 text-sm text-gray-300">
+          {studyMode === 'tafsir' && getTafsirMessage()}
+          {studyMode === 'word-by-word' && (
+            <div className="space-y-3">
+              <p>{getWordByWordMessage()}</p>
+              {studyAyah ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400">Current study ayah: Surah {selected}, Ayah {studyAyah.number}</p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                    {studyWords.map((word) => (
+                      <div key={`${word.index}-${word.arabic}`} className="rounded bg-gray-900 p-3 text-center">
+                        <div dir="rtl" className="text-xl text-teal-100">{word.arabic}</div>
+                        <div className="mt-1 text-[11px] uppercase tracking-wide text-gray-500">Word {word.index}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-400">Load a Surah to see word cards.</p>
+              )}
+            </div>
+          )}
+          {studyMode === 'recitation' && (
+            <div className="space-y-3">
+              <p>{getRecitationMessage()}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <select value={selectedReciter} onChange={(event) => setSelectedReciter(event.target.value)} className="rounded bg-gray-900 border border-gray-700 px-3 py-2 text-sm">
+                  {RECITERS.filter((reciter) => reciter.available).map((reciter) => (
+                    <option key={reciter.id} value={reciter.id}>{reciter.label}</option>
+                  ))}
+                </select>
+                <button type="button" onClick={loadRecitation} className="rounded bg-teal-600 hover:bg-teal-500 px-3 py-2 font-semibold">
+                  Load Current Ayah Audio
+                </button>
+              </div>
+              {audioStatus && <p className="text-xs text-teal-300">{audioStatus}</p>}
+              {audioUrl && (
+                <audio controls src={audioUrl} className="w-full">
+                  Your browser does not support audio playback.
+                </audio>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <button className="rounded bg-gray-700 px-3 py-2" onClick={() => {
+                  if (!selected || !studyAyah || studyAyah.number <= 1) return
+                  recordRead(studyAyah.number - 1)
+                }}>Previous Ayah</button>
+                <button className="rounded bg-gray-700 px-3 py-2" onClick={() => {
+                  if (!selected || !studyAyah || studyAyah.number >= (selectedSurah?.numberOfAyahs ?? studyAyah.number)) return
+                  recordRead(studyAyah.number + 1)
+                }}>Next Ayah</button>
+              </div>
+            </div>
+          )}
+        </section>
       )}
       {loading ? <p className="text-center">Loading surah…</p> : (
         mode === 'ar'
