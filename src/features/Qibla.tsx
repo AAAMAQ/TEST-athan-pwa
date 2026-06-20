@@ -15,6 +15,9 @@ declare global {
 
 type QiblaMode = 'simple' | 'advanced'
 type PermissionStatusText = 'unknown' | 'granted' | 'denied' | 'unavailable'
+type Props = {
+  go?: (screen: string) => void
+}
 
 const KAABA = { lat: 21.4225, lon: 39.8262 }
 const MODE_KEY = 'athan.qibla.mode.v1'
@@ -68,12 +71,35 @@ function loadHaptics() {
   }
 }
 
-export default function Qibla() {
+function formatCoordsLabel(latitude: number, longitude: number) {
+  return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+}
+
+function formatCachedLocationLabel(location: { latitude: number; longitude: number; city?: string; country?: string }) {
+  const place = [location.city, location.country].filter(Boolean).join(', ')
+  return place || formatCoordsLabel(location.latitude, location.longitude)
+}
+
+async function reverseGeocodeLocation(latitude: number, longitude: number) {
+  const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&zoom=10&addressdetails=1`, {
+    headers: { Accept: 'application/json' }
+  })
+  if (!response.ok) throw new Error('Unable to reverse geocode location')
+  const data = await response.json()
+  const address = data?.address ?? {}
+  const city = address.city || address.town || address.village || address.hamlet || address.municipality || address.county
+  const region = address.state || address.region
+  const country = address.country
+  return [city, region, country].filter(Boolean).join(', ') || data?.display_name || ''
+}
+
+export default function Qibla({ go }: Props) {
   const [mode, setMode] = useState<QiblaMode>(() => loadMode())
   const [haptics, setHaptics] = useState(() => loadHaptics())
   const [bearing, setBearing] = useState<number | null>(null)
   const [heading, setHeading] = useState<number | null>(null)
   const [distanceKm, setDistanceKm] = useState<number | null>(null)
+  const [locationLabel, setLocationLabel] = useState('Finding location…')
   const [status, setStatus] = useState('Finding your location…')
   const [locationStatus, setLocationStatus] = useState<PermissionStatusText>('unknown')
   const [compassStatus, setCompassStatus] = useState<PermissionStatusText>('unknown')
@@ -109,15 +135,29 @@ export default function Qibla() {
           return
         }
 
-        const updateFromCoords = (latitude: number, longitude: number) => {
+        const updateFromCoords = (latitude: number, longitude: number, label?: string) => {
           const nextBearing = bearingToKaaba(latitude, longitude)
           setBearing(nextBearing)
           setDistanceKm(distanceToKaabaKm(latitude, longitude))
+          setLocationLabel(label || formatCoordsLabel(latitude, longitude))
           setLocationStatus('granted')
           setStatus('Location ready. Waiting for compass heading.')
         }
 
-        if (!cancelled.current) updateFromCoords(locState.location.latitude, locState.location.longitude)
+        if (!cancelled.current) {
+          updateFromCoords(
+            locState.location.latitude,
+            locState.location.longitude,
+            formatCachedLocationLabel(locState.location)
+          )
+          reverseGeocodeLocation(locState.location.latitude, locState.location.longitude)
+            .then((label) => {
+              if (!cancelled.current && label) setLocationLabel(label)
+            })
+            .catch(() => {
+              // Coordinates are already visible as a fallback.
+            })
+        }
 
         if ('geolocation' in navigator) {
           watchIdRef.current = navigator.geolocation.watchPosition(
@@ -223,6 +263,12 @@ export default function Qibla() {
     }
   }
 
+  function openQiblaHelp() {
+    window.location.hash = 'qibla'
+    if (go) go('NeedHelp')
+    else window.location.hash = '#qibla'
+  }
+
   return (
     <div className="mx-auto max-w-3xl p-2 space-y-4">
       <div className="mx-auto flex w-fit rounded-full border border-gray-700 bg-gray-900 p-1 text-sm">
@@ -254,7 +300,9 @@ export default function Qibla() {
           haptics={haptics}
           heading={heading}
           instruction={instruction}
+          locationLabel={locationLabel}
           needsCompassPermission={needsCompassPermission}
+          openQiblaHelp={openQiblaHelp}
           setHaptics={setHaptics}
           status={status}
           turn={turn}
@@ -282,7 +330,9 @@ function SimpleQibla({
   haptics,
   heading,
   instruction,
+  locationLabel,
   needsCompassPermission,
+  openQiblaHelp,
   setHaptics,
   status,
   turn
@@ -295,7 +345,9 @@ function SimpleQibla({
   haptics: boolean
   heading: number | null
   instruction: { muted: string; strong: string }
+  locationLabel: string
   needsCompassPermission: boolean
+  openQiblaHelp: () => void
   setHaptics: (enabled: boolean) => void
   status: string
   turn: number | null
@@ -309,16 +361,17 @@ function SimpleQibla({
         <div>
           <div className="text-xs uppercase tracking-wide text-gray-400">Location</div>
           <div className="mt-1 inline-flex rounded-lg bg-gray-900 px-3 py-2 text-xl font-bold text-gray-100">
-            Current location
+            {locationLabel}
           </div>
         </div>
-        <a
-          href="#qibla"
+        <button
+          type="button"
+          onClick={openQiblaHelp}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-900 text-sm font-bold text-teal-300 hover:bg-gray-700"
           title="Qibla help"
         >
           i
-        </a>
+        </button>
       </div>
 
       <div className="mt-10 flex flex-col items-center gap-6">
@@ -340,8 +393,8 @@ function SimpleQibla({
             <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 text-xl drop-shadow">🕋</div>
           </div>
 
-          <div className="absolute left-1/2 top-1/2 h-24 w-6 -translate-x-1/2 -translate-y-1/2">
-            <div className="mx-auto h-24 w-6 rounded-full bg-teal-500/80 shadow-[inset_0_10px_16px_rgba(255,255,255,0.28)]" />
+          <div className="absolute left-1/2 top-1/2 h-32 w-14 -translate-x-1/2 -translate-y-[46%]">
+            <QiblaNeedle className="h-full w-full" />
           </div>
         </div>
 
@@ -460,6 +513,42 @@ function AdvancedQibla({
 
 function CompassLetter({ label, className }: { label: string; className: string }) {
   return <span className={`absolute text-xl font-semibold text-gray-300/80 ${className}`}>{label}</span>
+}
+
+function QiblaNeedle({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 64 150"
+      aria-hidden="true"
+      className={className}
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <defs>
+        <linearGradient id="qiblaNeedleFill" x1="16" y1="10" x2="50" y2="140" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#99f6e4" />
+          <stop offset="0.5" stopColor="#14b8a6" />
+          <stop offset="1" stopColor="#0f766e" />
+        </linearGradient>
+        <linearGradient id="qiblaNeedleShine" x1="18" y1="18" x2="38" y2="120" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.7" />
+          <stop offset="0.55" stopColor="#ccfbf1" stopOpacity="0.16" />
+          <stop offset="1" stopColor="#ccfbf1" stopOpacity="0" />
+        </linearGradient>
+        <filter id="qiblaNeedleShadow" x="-35%" y="-20%" width="170%" height="145%">
+          <feDropShadow dx="0" dy="8" stdDeviation="6" floodColor="#0f172a" floodOpacity="0.28" />
+        </filter>
+      </defs>
+      <path
+        d="M32 4C46 4 57 68 59 104C60.5 132 49 146 32 146C15 146 3.5 132 5 104C7 68 18 4 32 4Z"
+        fill="url(#qiblaNeedleFill)"
+        filter="url(#qiblaNeedleShadow)"
+      />
+      <path
+        d="M32 10C41 14 48 66 50 101C51 124 44 137 32 137C21 137 13 125 14 104C16 72 23 20 32 10Z"
+        fill="url(#qiblaNeedleShine)"
+      />
+    </svg>
+  )
 }
 
 function headingFromOrientation(event: DeviceOrientationEvent) {

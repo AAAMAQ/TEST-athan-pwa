@@ -98,7 +98,7 @@ export default function App() {
         {screen === 'Home' && <Home go={go} />}
         {screen === 'Prayer' && <PrayerTimes />}
         {screen === 'Settings' && <Settings go={go} />}
-        {screen === 'Qibla' && <Qibla />}
+        {screen === 'Qibla' && <Qibla go={go} />}
         {screen === 'Quran' && <Quran />}
         {screen === 'Credits' && <Credits go={go} />}
         {screen === 'Privacy' && <Privacy />}

@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 
 export default function NeedHelp() {
+  useEffect(() => {
+    const target = window.location.hash.replace('#', '')
+    if (!target) return
+    window.setTimeout(() => {
+      document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }, [])
+
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">Need Help</h1>
