@@ -23,3 +23,4 @@ export type Screen =
   | 'BackupRestore'
   | 'RamadanMode'
   | 'SavedCities'
+  | 'Onboarding'

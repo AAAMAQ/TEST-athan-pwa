@@ -17,17 +17,16 @@ import MasjidMode from './features/MasjidMode'
 import BackupRestore from './features/BackupRestore'
 import RamadanMode from './features/RamadanMode'
 import SavedCities from './features/SavedCities'
+import Onboarding from './features/Onboarding'
 import { loadLanguage, t, type AppLanguage } from './lib/i18n'
+import { PRIMARY_TABS, type Screen, type Tab } from './types/nav'
 
-// Primary tabs shown in the bottom nav (keep it simple for mobile)
-const primaryTabs = ['Home', 'Prayer', 'Settings'] as const
-type Tab = typeof primaryTabs[number]
-type Screen = 'Home' | 'Prayer' | 'Settings' | 'Qibla' | 'Quran' | 'Credits' | 'Privacy' | 'Vision' | 'NeedHelp' | 'SalahTracker' | 'PrayerMonth' | 'AthanEngine' | 'Iqama' | 'More' | 'MasjidMode' | 'BackupRestore' | 'RamadanMode' | 'SavedCities'
+const primaryTabs = PRIMARY_TABS
 
 export default function App() {
-  // App should open on Home, not Prayer
   const [tab, setTab] = useState<Tab>('Home')
   const [screen, setScreen] = useState<Screen>('Home')
+  const [history, setHistory] = useState<Screen[]>([])
   const [language, setLanguage] = useState<AppLanguage>(() => loadLanguage())
 
   useEffect(() => {
@@ -36,16 +35,42 @@ export default function App() {
     return () => window.removeEventListener('athan-language-change', onLanguageChange)
   }, [])
 
+  useEffect(() => {
+    document.documentElement.lang = language
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr'
+  }, [language])
+
   const isPrimary = (s: Screen): s is Tab => (primaryTabs as readonly string[]).includes(s)
 
-  // Navigate from bottom tabs
-  const goTab = (t: Tab) => { setTab(t); setScreen(t) }
+  const goTab = (t: Tab) => {
+    setTab(t)
+    setScreen(t)
+    setHistory([])
+  }
 
-  // Navigate to any screen (used by Home shortcuts)
   const go = (s: string) => {
     const target = (s === 'Help' ? 'NeedHelp' : s) as Screen
+    if (target === screen) return
+    if (history.at(-1) === target) {
+      setHistory((current) => current.slice(0, -1))
+      setScreen(target)
+      if (isPrimary(target)) setTab(target)
+      return
+    }
+    setHistory((current) => [...current, screen])
     setScreen(target)
     if (isPrimary(target)) setTab(target)
+  }
+
+  const goBack = () => {
+    const previous = history.at(-1)
+    if (previous) {
+      setHistory((current) => current.slice(0, -1))
+      setScreen(previous)
+      if (isPrimary(previous)) setTab(previous)
+      return
+    }
+    goTab('Home')
   }
 
   const screenLabels: Record<Screen, string> = {
@@ -60,13 +85,14 @@ export default function App() {
     NeedHelp: t('needHelp', language),
     SalahTracker: t('salahTracker', language),
     PrayerMonth: t('prayerTimes', language),
-    AthanEngine: t('advancedAthan', language),
+    AthanEngine: t('deepSearchAthan', language),
     Iqama: t('iqama', language),
     More: t('more', language),
     MasjidMode: t('masjidMode', language),
     BackupRestore: t('backupRestore', language),
     RamadanMode: t('ramadanMode', language),
-    SavedCities: t('savedCities', language)
+    SavedCities: t('savedCities', language),
+    Onboarding: t('onboarding', language)
   }
 
   const tabLabels: Record<Tab, string> = {
@@ -83,8 +109,8 @@ export default function App() {
       <header className="p-4 bg-gray-800 flex items-center justify-between">
         {!isPrimary(screen) ? (
           <button
-            className="px-3 py-1 rounded bg-gray-700 text-gray-200"
-            onClick={() => { setScreen('Home'); setTab('Home') }}
+            className="min-h-10 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-gray-200 hover:border-teal-600"
+            onClick={goBack}
           >
             ← {t('back', language)}
           </button>
@@ -113,6 +139,7 @@ export default function App() {
         {screen === 'BackupRestore' && <BackupRestore go={go} />}
         {screen === 'RamadanMode' && <RamadanMode go={go} />}
         {screen === 'SavedCities' && <SavedCities go={go} />}
+        {screen === 'Onboarding' && <Onboarding go={go} />}
       </main>
 
       {/* Bottom navigation — ONLY three tabs */}
@@ -121,12 +148,40 @@ export default function App() {
           <button
             key={t}
             onClick={() => goTab(t)}
-            className={`flex-1 py-2 ${tab === t ? 'text-teal-400' : 'text-gray-400'}`}
+            aria-current={tab === t ? 'page' : undefined}
+            className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 py-1 text-xs transition-colors ${tab === t ? 'text-teal-300' : 'text-gray-400 hover:text-gray-200'}`}
           >
+            <NavIcon tab={t} />
             {tabLabels[t]}
           </button>
         ))}
       </nav>
     </div>
+  )
+}
+
+function NavIcon({ tab }: { tab: Tab }) {
+  if (tab === 'Home') {
+    return (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="m3 11 9-8 9 8" />
+        <path d="M5 10v10h14V10M9 20v-6h6v6" />
+      </svg>
+    )
+  }
+  if (tab === 'Prayer') {
+    return (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+        <path d="M5 20V9a7 7 0 0 1 14 0v11" />
+        <path d="M8 20v-7a4 4 0 0 1 8 0v7M3 20h18" />
+        <path d="M12 2V0.8" />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
+    </svg>
   )
 }

@@ -1,6 +1,13 @@
 // src/features/AthanEngine.tsx
 
 import { useState } from 'react'
+import {
+  correctionsForSavedCity,
+  loadSavedCities,
+  settingsForSavedCity,
+  type SavedCity
+} from '../lib/savedCities'
+import { formatSignedCorrection, PRAYER_CORRECTION_KEYS } from '../lib/prayerCorrections'
 
 type Props = {
   go?: (screen: string) => void
@@ -10,7 +17,7 @@ type EngineMethod =
   | 'MWL'
   | 'UmmAlQura'
   | 'Egypt'
-  | 'Karachi/India'
+  | 'Karachi'
   | 'Dubai'
   | 'Qatar'
   | 'Kuwait'
@@ -47,7 +54,7 @@ const METHOD_OPTIONS: { value: EngineMethod; label: string }[] = [
   { value: 'MWL', label: 'Muslim World League' },
   { value: 'UmmAlQura', label: 'Umm Al-Qura' },
   { value: 'Egypt', label: 'Egyptian General Authority' },
-  { value: 'Karachi/India', label: 'University of Islamic Sciences, Karachi/India' },
+  { value: 'Karachi', label: 'University of Islamic Sciences, Karachi/India' },
   { value: 'Dubai', label: 'Dubai' },
   { value: 'Qatar', label: 'Qatar' },
   { value: 'Kuwait', label: 'Kuwait' },
@@ -94,6 +101,39 @@ function formatEngineTime(value: string, format: TimeFormat) {
   return `${hour}:${minute} ${period}`
 }
 
+function parseDateInput(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  if (!year || !month || !day) throw new Error('Please choose a valid date range.')
+  return new Date(year, month - 1, day)
+}
+
+function formatDisplayDate(value: string) {
+  return parseDateInput(value).toLocaleDateString([], {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
+
+function toEngineMethod(method: ReturnType<typeof settingsForSavedCity>['method']): EngineMethod {
+  const methods: Record<ReturnType<typeof settingsForSavedCity>['method'], EngineMethod> = {
+    MuslimWorldLeague: 'MWL',
+    UmmAlQura: 'UmmAlQura',
+    Egyptian: 'Egypt',
+    Karachi: 'Karachi',
+    Dubai: 'Dubai',
+    Qatar: 'Qatar',
+    Kuwait: 'Kuwait',
+    MoonsightingCommittee: 'Moonsighting',
+    NorthAmerica: 'ISNA',
+    Singapore: 'Singapore',
+    Tehran: 'Tehran',
+    Turkey: 'Turkey'
+  }
+  return methods[method]
+}
+
 async function loadEngine() {
   const engine = await import('../lib/engine')
   const module = engine as Record<string, unknown>
@@ -105,11 +145,11 @@ async function loadEngine() {
   const makeIcsFilename = module.makeEngineIcsFilename || module.makeIcsFilename
 
   if (typeof resolveLocation !== 'function') {
-    throw new Error(`Advanced Athan engine is missing a location search function. Available exports: ${Object.keys(engine).join(', ') || 'none'}`)
+    throw new Error(`Deep Search Athan engine is missing a location search function. Available exports: ${Object.keys(engine).join(', ') || 'none'}`)
   }
 
   if (typeof getPrayerRows !== 'function') {
-    throw new Error(`Advanced Athan engine is missing a prayer-row function. Available exports: ${Object.keys(engine).join(', ') || 'none'}`)
+    throw new Error(`Deep Search Athan engine is missing a prayer-row function. Available exports: ${Object.keys(engine).join(', ') || 'none'}`)
   }
 
   return {
@@ -123,6 +163,9 @@ async function loadEngine() {
 
 export default function AthanEngine({ go }: Props) {
   const today = new Date()
+  const [savedCities] = useState<SavedCity[]>(() => loadSavedCities())
+  const [savedCityId, setSavedCityId] = useState('')
+  const [activeSavedCityId, setActiveSavedCityId] = useState('')
   const [query, setQuery] = useState('')
   const [location, setLocation] = useState<EngineLocation | null>(null)
   const [rows, setRows] = useState<EnginePrayerRow[]>([])
@@ -135,12 +178,7 @@ export default function AthanEngine({ go }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-
-  const goIqama = () => {
-    if (go) return go('Iqama')
-    window.location.hash = '#Iqama'
-  }
-
+  const activeSavedCity = savedCities.find((city) => city.id === activeSavedCityId) ?? null
 
   async function handleSearch() {
     try {
@@ -159,12 +197,69 @@ export default function AthanEngine({ go }: Props) {
       }) as EnginePrayerRow[]
 
       setLocation(resolvedLocation)
+      setActiveSavedCityId('')
       setRows(prayerRows)
       setNotice(`Generated ${prayerRows.length} day${prayerRows.length === 1 ? '' : 's'} of prayer times for ${resolvedLocation.label}.`)
     } catch (err) {
       setLocation(null)
       setRows([])
       setError(getErrorMessage(err, 'Something went wrong while searching.'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function generateSavedCityRows(city: SavedCity) {
+    const { getTimetableRows } = await import('../lib/timetableExport')
+    const settings = settingsForSavedCity(city)
+    const corrections = correctionsForSavedCity(city)
+    const start = parseDateInput(fromDate)
+    const end = parseDateInput(toDate)
+    if (start > end) throw new Error('The start date cannot be after the end date.')
+    const timetableRows = getTimetableRows({
+      locationName: city.name || city.city || 'Saved city',
+      coords: { latitude: city.latitude, longitude: city.longitude },
+      fromDate: start,
+      toDate: end,
+      settings,
+      corrections
+    })
+
+    const prayerRows: EnginePrayerRow[] = timetableRows.map((row) => ({
+      ...row,
+      displayDate: formatDisplayDate(row.date)
+    }))
+    const savedLocation: EngineLocation = {
+      label: city.name || city.city || `${city.latitude.toFixed(4)}, ${city.longitude.toFixed(4)}`,
+      latitude: city.latitude,
+      longitude: city.longitude,
+      timezone: city.timezone
+    }
+
+    setMethod(toEngineMethod(settings.method))
+    setMadhab(settings.madhab)
+    setLocation(savedLocation)
+    setRows(prayerRows)
+    setActiveSavedCityId(city.id)
+    return prayerRows
+  }
+
+  async function handleLoadSavedCity() {
+    const city = savedCities.find((item) => item.id === savedCityId)
+    if (!city) {
+      setError('Choose a saved city profile first.')
+      return
+    }
+    try {
+      setLoading(true)
+      setError('')
+      setNotice('')
+      const prayerRows = await generateSavedCityRows(city)
+      setQuery(city.name || city.city)
+      setNotice(`Generated ${prayerRows.length} day${prayerRows.length === 1 ? '' : 's'} for ${city.name || city.city} using its saved calculation settings and corrections.`)
+    } catch (err) {
+      setRows([])
+      setError(getErrorMessage(err, 'Could not generate prayer times for this saved city.'))
     } finally {
       setLoading(false)
     }
@@ -179,6 +274,12 @@ export default function AthanEngine({ go }: Props) {
     try {
       setError('')
       setNotice('')
+
+      if (activeSavedCity) {
+        await generateSavedCityRows(activeSavedCity)
+        setNotice(`Updated ${activeSavedCity.name || activeSavedCity.city} using its saved method, madhab, high-latitude rule, and corrections.`)
+        return
+      }
 
       const engine = await loadEngine()
       const prayerRows = await engine.getPrayerRows({
@@ -207,7 +308,7 @@ export default function AthanEngine({ go }: Props) {
       const engine = await loadEngine()
 
       if (typeof engine.generateIcs !== 'function' || typeof engine.downloadIcs !== 'function' || typeof engine.makeIcsFilename !== 'function') {
-        throw new Error('Advanced Athan engine is missing one or more ICS export functions.')
+        throw new Error('Deep Search Athan engine is missing one or more ICS export functions.')
       }
 
       const ics = engine.generateIcs({
@@ -233,13 +334,56 @@ export default function AthanEngine({ go }: Props) {
   return (
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <header className="space-y-1 text-center">
-        <h1 className="text-2xl font-bold">Advanced Athan</h1>
+        <h1 className="text-2xl font-bold">Deep Search Athan</h1>
         <p className="text-gray-300">
           Search any location and generate custom prayer-time calendar reminders.
         </p>
       </header>
 
       <section className="bg-gray-800 rounded-lg p-4 space-y-4">
+        <div className="rounded border border-gray-700 bg-gray-900/70 p-3 space-y-3">
+          <div>
+            <h2 className="font-semibold">Load a Saved City</h2>
+            <p className="text-xs text-gray-400">
+              Generate locally with the profile&apos;s method, madhab, high-latitude rule, and signed prayer corrections.
+            </p>
+          </div>
+          {savedCities.length > 0 ? (
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <label htmlFor="deep-search-saved-city" className="sr-only">Saved city profile</label>
+              <select
+                id="deep-search-saved-city"
+                value={savedCityId}
+                onChange={(event) => setSavedCityId(event.target.value)}
+                className="w-full rounded bg-gray-950 border border-gray-700 px-3 py-2 text-white"
+              >
+                <option value="">Choose a saved city</option>
+                {savedCities.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.name || city.city || 'Unnamed city'}{city.country ? `, ${city.country}` : ''}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleLoadSavedCity}
+                disabled={!savedCityId || loading}
+                className="rounded bg-teal-600 px-4 py-2 font-semibold hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Load &amp; Generate
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">No saved cities are available yet. Add one from Saved Cities first.</p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 text-xs text-gray-500">
+          <span className="h-px flex-1 bg-gray-700" />
+          <span>or search a new location</span>
+          <span className="h-px flex-1 bg-gray-700" />
+        </div>
+
         <div className="space-y-2">
           <label htmlFor="athan-engine-location" className="block text-sm font-semibold">
             Search location
@@ -286,7 +430,10 @@ export default function AthanEngine({ go }: Props) {
           <span className="font-semibold">Calculation method</span>
           <select
             value={method}
-            onChange={(event) => setMethod(event.target.value as EngineMethod)}
+            onChange={(event) => {
+              setMethod(event.target.value as EngineMethod)
+              setActiveSavedCityId('')
+            }}
             className="w-full rounded bg-gray-900 border border-gray-700 px-3 py-2 text-white"
           >
             {METHOD_OPTIONS.map((option) => (
@@ -302,7 +449,10 @@ export default function AthanEngine({ go }: Props) {
             <span className="font-semibold">Madhab</span>
             <select
               value={madhab}
-              onChange={(event) => setMadhab(event.target.value as EngineMadhab)}
+              onChange={(event) => {
+                setMadhab(event.target.value as EngineMadhab)
+                setActiveSavedCityId('')
+              }}
               className="w-full rounded bg-gray-900 border border-gray-700 px-3 py-2 text-white"
             >
               <option value="Shafi">Shafi</option>
@@ -394,8 +544,21 @@ export default function AthanEngine({ go }: Props) {
             Coordinates: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
           </p>
           <p className="text-xs text-gray-400">
-            This Advanced Athan setup is separate from the main Settings page.
+            This Deep Search Athan setup is separate from the main Settings page.
           </p>
+          {activeSavedCity && (
+            <div className="rounded border border-teal-900 bg-teal-950/30 p-3 text-xs text-gray-300 space-y-1">
+              <p className="font-semibold text-teal-300">Saved profile applied</p>
+              <p>
+                {settingsForSavedCity(activeSavedCity).method} · {settingsForSavedCity(activeSavedCity).madhab} · {settingsForSavedCity(activeSavedCity).highLatRule}
+              </p>
+              <p>
+                Corrections: {activeSavedCity.calculationMode === 'custom-corrections'
+                  ? PRAYER_CORRECTION_KEYS.map((prayer) => `${prayer} ${formatSignedCorrection(activeSavedCity.manualCorrections?.[prayer])}`).join(' · ')
+                  : 'None'}
+              </p>
+            </div>
+          )}
         </section>
       )}
 
@@ -454,10 +617,11 @@ export default function AthanEngine({ go }: Props) {
       )}
 
       <button
-        onClick={goIqama}
-        className="w-full bg-gray-800 rounded-lg p-4 text-center font-semibold hover:bg-gray-700"
+        type="button"
+        onClick={() => go ? go('More') : window.location.hash = '#More'}
+        className="rounded bg-gray-700 px-4 py-2 hover:bg-gray-600"
       >
-        Generate Local Iqama
+        Back
       </button>
     </div>
   )

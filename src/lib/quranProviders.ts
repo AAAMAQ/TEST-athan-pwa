@@ -1,5 +1,12 @@
 export type QuranStudyMode = 'translation' | 'tafsir' | 'word-by-word' | 'recitation'
 
+export type QuranTranslation = {
+  id: 'en.asad' | 'en.pickthall' | 'en.sahih' | 'en.yusufali'
+  label: string
+  shortLabel: string
+  description: string
+}
+
 export type TafsirSource = {
   id: string
   label: string
@@ -29,6 +36,37 @@ export type RecitationAudio = {
 }
 
 const API = 'https://api.alquran.cloud/v1'
+
+export const QURAN_TRANSLATIONS: QuranTranslation[] = [
+  {
+    id: 'en.asad',
+    label: 'Muhammad Asad',
+    shortLabel: 'Asad',
+    description: 'Reflective modern English with explanatory phrasing.'
+  },
+  {
+    id: 'en.pickthall',
+    label: 'Marmaduke Pickthall',
+    shortLabel: 'Pickthall',
+    description: 'A classic English rendering with formal language.'
+  },
+  {
+    id: 'en.sahih',
+    label: 'Saheeh International',
+    shortLabel: 'Saheeh',
+    description: 'Clear contemporary English designed for direct reading.'
+  },
+  {
+    id: 'en.yusufali',
+    label: 'Abdullah Yusuf Ali',
+    shortLabel: 'Yusuf Ali',
+    description: 'A widely read literary English translation.'
+  }
+]
+
+export function isQuranTranslation(value: string): value is QuranTranslation['id'] {
+  return QURAN_TRANSLATIONS.some((translation) => translation.id === value)
+}
 
 export const TAFSIR_SOURCES: TafsirSource[] = [
   {

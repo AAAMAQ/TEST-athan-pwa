@@ -1,81 +1,125 @@
 import { useEffect, useState } from 'react'
+import { t, type AppLanguage } from '../lib/i18n'
+import {
+  ATHAN_APP_UPDATED_AT,
+  ATHAN_APP_VERSION,
+  getInstalledVersion,
+  isPwaInstalled,
+  refreshAthanApp,
+  requestPwaInstall
+} from '../lib/pwa'
 
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+type Props = {
+  language?: AppLanguage
 }
 
-export default function PwaStatus() {
+export default function PwaStatus({ language = 'en' }: Props) {
   const [online, setOnline] = useState(() => navigator.onLine)
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [installed, setInstalled] = useState(() => window.matchMedia?.('(display-mode: standalone)').matches ?? false)
+  const [installed, setInstalled] = useState(isPwaInstalled)
+  const [installedVersion] = useState(getInstalledVersion)
   const [message, setMessage] = useState('')
+  const [checking, setChecking] = useState(false)
 
   useEffect(() => {
     const onOnline = () => setOnline(true)
     const onOffline = () => setOnline(false)
-    const onBeforeInstall = (event: Event) => {
-      event.preventDefault()
-      setInstallPrompt(event as BeforeInstallPromptEvent)
-    }
     const onInstalled = () => {
       setInstalled(true)
-      setInstallPrompt(null)
-      setMessage('Athan PWA is installed.')
+      setMessage(t('installedSuccessfully', language))
     }
-
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
-    window.addEventListener('beforeinstallprompt', onBeforeInstall)
     window.addEventListener('appinstalled', onInstalled)
     return () => {
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
-      window.removeEventListener('beforeinstallprompt', onBeforeInstall)
       window.removeEventListener('appinstalled', onInstalled)
     }
-  }, [])
+  }, [language])
 
   async function installApp() {
-    if (!installPrompt) {
-      setMessage('On iOS Safari, use Share, then Add to Home Screen.')
-      return
+    try {
+      const result = await requestPwaInstall()
+      if (result === 'accepted') setMessage(t('installStarted', language))
+      if (result === 'dismissed') setMessage(t('installDismissed', language))
+      if (result === 'shared') setMessage(t('shareOpened', language))
+      if (result === 'guidance') setMessage(t('installGuidance', language))
+    } catch {
+      // Native share cancellation is not an app error.
     }
-    await installPrompt.prompt()
-    const choice = await installPrompt.userChoice
-    setMessage(choice.outcome === 'accepted' ? 'Install started.' : 'Install dismissed.')
-    setInstallPrompt(null)
   }
 
   async function updateApp() {
-    try {
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations()
-        await Promise.all(registrations.map((registration) => registration.update()))
-      }
-      setMessage('Checked for updates. Reload if your browser downloaded a new version.')
-    } catch {
-      setMessage('Could not check for updates right now.')
-    }
+    setChecking(true)
+    await refreshAthanApp((status) => {
+      if (status === 'checking') setMessage(t('checkingForUpdate', language))
+      if (status === 'reloading') setMessage(t('reloadingLatest', language))
+      if (status === 'fallback') setMessage(t('updateClearFailed', language))
+    })
   }
 
+  const releaseDate = new Intl.DateTimeFormat(language === 'ar' ? 'ar' : 'en', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(new Date(`${ATHAN_APP_UPDATED_AT}T12:00:00`))
+  const versionsMatch = installedVersion === ATHAN_APP_VERSION
+
   return (
-    <section className="rounded-lg bg-gray-800 p-4 space-y-3">
+    <section className="rounded-lg border border-gray-700/80 bg-gray-800/90 p-4 shadow-sm sm:p-5">
       <div>
-        <h3 className="font-semibold">PWA Status</h3>
-        <p className="text-xs text-gray-400">
-          {online ? 'You are online.' : 'You are offline. Saved features remain available.'} {installed ? 'Installed mode detected.' : 'Install Athan PWA for quicker access.'}
+        <h2 className="font-semibold text-white">{t('pwaStatus', language)}</h2>
+        <p className="mt-1 text-xs leading-5 text-gray-400">
+          {online ? t('onlineReady', language) : t('offlineReady', language)}
+          {' · '}
+          {installed ? t('installedMode', language) : t('browserMode', language)}
         </p>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={installApp} className="rounded bg-teal-600 hover:bg-teal-500 px-3 py-2 text-sm font-semibold">
-          Install Athan PWA
+
+      <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-md border border-gray-700 bg-gray-700 text-sm">
+        <StatusItem label={t('currentVersion', language)} value={`v${ATHAN_APP_VERSION}`} />
+        <StatusItem label={t('installedVersion', language)} value={`v${installedVersion}`} />
+        <StatusItem label={t('lastUpdated', language)} value={releaseDate} />
+        <StatusItem
+          label={t('updateStatus', language)}
+          value={versionsMatch ? t('latestVersionLoaded', language) : t('updateAvailable', language)}
+          accent={!versionsMatch}
+        />
+      </dl>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={installApp}
+          className="min-h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-600"
+        >
+          {t('installAthan', language)}
         </button>
-        <button type="button" onClick={updateApp} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 text-sm font-semibold">
-          Check for Update
+        <button
+          type="button"
+          onClick={updateApp}
+          disabled={checking || !online}
+          className="min-h-11 rounded-md border border-gray-600 bg-gray-900 px-4 text-sm font-semibold text-gray-100 transition hover:border-teal-700 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {checking ? t('checkingForUpdate', language) : t('checkForUpdate', language)}
         </button>
       </div>
-      {message && <p className="rounded bg-gray-900 p-2 text-xs text-teal-300">{message}</p>}
+
+      <p className="mt-3 text-xs leading-5 text-gray-400">{t('pwaDataSafe', language)}</p>
+      {message && (
+        <p role="status" aria-live="polite" className="mt-3 rounded-md bg-gray-950 px-3 py-2 text-xs text-teal-200">
+          {message}
+        </p>
+      )}
     </section>
+  )
+}
+
+function StatusItem({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="min-h-20 bg-gray-900 p-3">
+      <dt className="text-xs text-gray-500">{label}</dt>
+      <dd className={`mt-1 text-sm font-semibold ${accent ? 'text-amber-300' : 'text-gray-100'}`}>{value}</dd>
+    </div>
   )
 }

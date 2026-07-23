@@ -26,6 +26,16 @@ export const DEFAULT_PRAYER_CORRECTIONS: PrayerTimeCorrections = {
   Isha: 0
 }
 
+export function normalizeCorrectionMinutes(value: unknown): number {
+  const number = Number(value)
+  return Number.isFinite(number) ? Math.max(-180, Math.min(180, Math.round(number))) : 0
+}
+
+export function formatSignedCorrection(value: unknown): string {
+  const minutes = normalizeCorrectionMinutes(value)
+  return minutes > 0 ? `+${minutes}` : String(minutes)
+}
+
 export function loadCustomPrayerProfiles(): CustomPrayerProfile[] {
   try {
     const raw = localStorage.getItem(CUSTOM_PROFILES_KEY)
@@ -92,8 +102,7 @@ export function normalizeCorrections(value: unknown): PrayerTimeCorrections {
   const maybe = value && typeof value === 'object' ? value as Partial<PrayerTimeCorrections> : {}
   const result = { ...DEFAULT_PRAYER_CORRECTIONS }
   for (const key of PRAYER_CORRECTION_KEYS) {
-    const number = Number(maybe[key])
-    result[key] = Number.isFinite(number) ? Math.max(-180, Math.min(180, Math.round(number))) : 0
+    result[key] = normalizeCorrectionMinutes(maybe[key])
   }
   return result
 }

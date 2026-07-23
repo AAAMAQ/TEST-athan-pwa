@@ -6,6 +6,7 @@ export type QuranOfflineStatus = {
   downloadedSurahs: number
   totalSurahs: number
   updatedAt: string | null
+  edition?: string
   error?: string
 }
 
@@ -29,17 +30,20 @@ export function loadQuranOfflineStatus(): QuranOfflineStatus {
   }
 }
 
-export async function downloadQuranOffline(onProgress?: (progress: QuranDownloadProgress) => void): Promise<QuranOfflineStatus> {
+export async function downloadQuranOffline(
+  onProgress?: (progress: QuranDownloadProgress) => void,
+  edition = DEFAULT_EDITION
+): Promise<QuranOfflineStatus> {
   const surahs = await fetchSurahs()
   let downloaded = 0
   const cache = 'caches' in window ? await caches.open(QURAN_OFFLINE_CACHE) : null
 
   for (const surah of surahs) {
     onProgress?.({ current: downloaded + 1, total: surahs.length, label: `Downloading Surah ${surah.number}` })
-    await fetchSurah(surah.number, DEFAULT_EDITION)
+    await fetchSurah(surah.number, edition)
     if (cache) {
       await cache.add(`https://api.alquran.cloud/v1/surah/${surah.number}/ar.uthmani`).catch(() => undefined)
-      await cache.add(`https://api.alquran.cloud/v1/surah/${surah.number}/${DEFAULT_EDITION}`).catch(() => undefined)
+      await cache.add(`https://api.alquran.cloud/v1/surah/${surah.number}/${edition}`).catch(() => undefined)
     }
     downloaded++
   }
@@ -49,7 +53,8 @@ export async function downloadQuranOffline(onProgress?: (progress: QuranDownload
     complete: downloaded === surahs.length,
     downloadedSurahs: downloaded,
     totalSurahs: surahs.length,
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    edition
   }
   saveStatus(status)
   return status
@@ -85,6 +90,7 @@ function normalizeStatus(value: unknown): QuranOfflineStatus {
     downloadedSurahs: Number.isFinite(Number(maybe.downloadedSurahs)) ? Number(maybe.downloadedSurahs) : 0,
     totalSurahs: Number.isFinite(Number(maybe.totalSurahs)) ? Number(maybe.totalSurahs) : 114,
     updatedAt: typeof maybe.updatedAt === 'string' ? maybe.updatedAt : null,
+    edition: typeof maybe.edition === 'string' ? maybe.edition : undefined,
     error: typeof maybe.error === 'string' ? maybe.error : undefined
   }
 }

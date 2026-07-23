@@ -1,5 +1,5 @@
 import { computePrayerTimes, type PrayerSettings } from './prayer'
-import { applyCorrections, type PrayerTimeCorrections } from './prayerCorrections'
+import { PRAYER_CORRECTION_KEYS, applyCorrections, formatSignedCorrection, type PrayerTimeCorrections } from './prayerCorrections'
 
 export type TimetableRow = {
   date: string
@@ -42,12 +42,17 @@ export function getTimetableRows(options: TimetableOptions): TimetableRow[] {
 
 export function buildTimetableText(options: TimetableOptions): string {
   const rows = getTimetableRows(options)
+  const correctionSummary = options.corrections
+    ? PRAYER_CORRECTION_KEYS.map((prayer) => `${prayer} ${formatSignedCorrection(options.corrections?.[prayer])}`).join(', ')
+    : 'None'
   return [
     'Athan PWA Prayer Timetable',
     `Location: ${options.locationName}`,
     `Date range: ${formatDate(options.fromDate)} to ${formatDate(options.toDate)}`,
     `Method: ${options.settings.method}`,
     `Madhab: ${options.settings.madhab}`,
+    `High latitude rule: ${options.settings.highLatRule}`,
+    `Corrections (minutes): ${correctionSummary}`,
     '',
     ...rows.map((row) => `${row.date} Fajr: ${row.Fajr} Sunrise: ${row.Sunrise} Dhuhr: ${row.Dhuhr} Asr: ${row.Asr} Maghrib: ${row.Maghrib} Isha: ${row.Isha}`)
   ].join('\n')

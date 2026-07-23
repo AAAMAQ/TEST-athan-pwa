@@ -116,6 +116,12 @@ export function settingsForSavedCity(city: SavedCity): PrayerSettings {
   }
 }
 
+export function correctionsForSavedCity(city: SavedCity): PrayerTimeCorrections | undefined {
+  return city.calculationMode === 'custom-corrections'
+    ? normalizeCorrections(city.manualCorrections)
+    : undefined
+}
+
 export async function searchSavedCity(query: string): Promise<Partial<SavedCity>[]> {
   const trimmed = query.trim()
   if (!trimmed) return []

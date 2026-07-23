@@ -62,7 +62,7 @@ export function markAyahRead(surah: number, ayah: number, title?: string, totalA
   const progressPercent = totalAyahs ? Math.min(100, Math.round((safeAyah / totalAyahs) * 100)) : undefined
   const recentlyRead = [
     recent,
-    ...current.recentlyRead.filter((item) => !(item.surah === safeSurah && item.ayah === safeAyah))
+    ...current.recentlyRead.filter((item) => item.surah !== safeSurah)
   ].slice(0, 8)
 
   const next: QuranProgress = {

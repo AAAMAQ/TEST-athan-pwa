@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 
-export default function NeedHelp() {
+type Props = {
+  go?: (screen: string) => void
+  backTarget?: string
+}
+
+export default function NeedHelp({ go, backTarget = 'Credits' }: Props) {
   useEffect(() => {
     const target = window.location.hash.replace('#', '')
     if (!target) return
@@ -11,6 +16,15 @@ export default function NeedHelp() {
 
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-6">
+      {go && (
+        <button
+          type="button"
+          onClick={() => go(backTarget)}
+          className="rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 hover:border-teal-700 hover:text-teal-300"
+        >
+          ← Back to Credits
+        </button>
+      )}
       <h1 className="text-2xl font-bold">Need Help</h1>
 
       <p className="text-gray-200 text-sm">
@@ -24,7 +38,7 @@ export default function NeedHelp() {
         <a href="#downloadics" className="underline">Download and Set reminders via Calendar (.ics)</a>
         <a href="#whatsnew" className="underline">What&apos;s new?</a>
         <a href="#qibla" className="underline">Qibla not accurate?</a>
-        <a href="#v3features" className="underline">v3.0.0 features</a>
+        <a href="#v3features" className="underline">v3.1.0 features</a>
         <a href="#quran" className="underline">How to use the Quran</a>
         <a href="#bookmarks" className="underline">Quran bookmarks</a>
         <a href="#location" className="underline">Location & accuracy</a>
@@ -39,12 +53,12 @@ export default function NeedHelp() {
       <section id="whatsnew" className="space-y-2">
         <h2 className="text-xl font-semibold">What&apos;s new?</h2>
         <p className="text-gray-200 text-sm">
-          The newest feature is <span className="font-semibold">Advanced Athan</span>. This is a separate prayer-time
+          <span className="font-semibold">Deep Search Athan</span> is a dedicated prayer-time
           tool inside the app that lets you search for a city, country, or coordinates and generate a custom prayer-time
           preview and calendar reminder file for that location.
         </p>
 
-        <h3 className="font-semibold text-teal-300 text-sm mt-2">What Advanced Athan can do</h3>
+        <h3 className="font-semibold text-teal-300 text-sm mt-2">What Deep Search Athan can do</h3>
         <ul className="list-disc pl-5 space-y-1 text-gray-200 text-sm">
           <li>
             <span className="font-semibold">Search any location:</span> Enter a city, country, or coordinates, such as
@@ -58,7 +72,7 @@ export default function NeedHelp() {
           </li>
           <li>
             <span className="font-semibold">Choose calculation settings:</span> Select the calculation method and Madhab
-            just for Advanced Athan without changing your main Settings page.
+            just for Deep Search Athan without changing your main Settings page.
           </li>
           <li>
             <span className="font-semibold">Preview the prayer times:</span> Check Fajr, Sunrise, Dhuhr, Asr, Maghrib,
@@ -85,12 +99,12 @@ export default function NeedHelp() {
 
         <h3 className="font-semibold text-teal-300 text-sm mt-2">Privacy and data use</h3>
         <p className="text-gray-200 text-sm">
-          Advanced Athan is designed to stay lightweight and privacy-respecting. The app does not create an account and
+          Deep Search Athan is designed to stay lightweight and privacy-respecting. The app does not create an account and
           does not store your searches on our server. Location searches may be cached locally in your browser so the same
           city does not need to be looked up again every time.
         </p>
         <p className="text-gray-200 text-sm">
-          Some Advanced Athan features use external services to make the search and timetable work properly. Location
+          Some Deep Search Athan features use external services to make the search and timetable work properly. Location
           lookup uses OpenStreetMap-based data, timezone lookup may use a timezone service, and prayer-time timetable
           data may be requested from AlAdhan for the selected location and date range. These services are used only to
           provide the feature you requested.
@@ -107,7 +121,7 @@ export default function NeedHelp() {
             coordinates when needed.
           </li>
           <li>
-            <span className="font-semibold">AlAdhan:</span> Used for prayer-time timetable data in Advanced Athan when
+            <span className="font-semibold">AlAdhan:</span> Used for prayer-time timetable data in Deep Search Athan when
             generating prayer-time previews and calendar exports for searched locations.
           </li>
           <li>
@@ -117,13 +131,13 @@ export default function NeedHelp() {
         </ul>
 
         <p className="text-gray-300 text-xs">
-          Advanced Athan is still being improved. Always compare prayer times with your local masjid if you are unsure,
+          Deep Search Athan is still being improved. Always compare prayer times with your local masjid if you are unsure,
           especially in high-latitude areas, during travel, or when generating a long calendar export.
         </p>
       </section>
 
       <section id="v3features" className="space-y-2">
-        <h2 className="text-xl font-semibold">v3.0.0 feature guide</h2>
+        <h2 className="text-xl font-semibold">v3.1.0 feature guide</h2>
         <div className="space-y-3 text-sm text-gray-200">
           <p>
             <span className="font-semibold text-teal-300">Qibla:</span> Simple Mode gives a large readable compass,
@@ -133,9 +147,9 @@ export default function NeedHelp() {
           </p>
           <p>
             <span className="font-semibold text-teal-300">Quran:</span> Continue Reading, recently read, per-Surah
-            progress, favorite Surahs, and offline Quran controls are available in the Quran screen. Tafsir,
-            word-by-word, and recitation tabs are structured for future data/providers and show safe placeholder
-            messages when content is not bundled.
+            progress, bookmarks, offline Quran controls, and a focused Translation / Tafsir selector are available
+            in the Quran screen. Choose Muhammad Asad, Pickthall, Saheeh International, or Yusuf Ali and review the
+            live sample before reading.
           </p>
           <p>
             <span className="font-semibold text-teal-300">Saved Cities / Travel Mode:</span> Open More, then Saved
@@ -456,8 +470,9 @@ export default function NeedHelp() {
         </ul>
 
         <p className="text-gray-300 text-xs">
-          Iqama times and advanced widgets are not yet implemented in this web version. They may be added in the
-          future as the app evolves.
+          Iqama Times is available as its own feature. You can set a fixed time or an offset after Athan for each
+          prayer, preview the schedule, and export Iqama reminders to a calendar file. Calendar alerts are handled
+          by your calendar app.
         </p>
       </section>
 

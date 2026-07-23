@@ -1,49 +1,69 @@
+type Props = {
+  go?: (screen: string) => void
+  backTarget?: string
+}
 
-export default function Privacy() {
+export default function Privacy({ go, backTarget = 'Credits' }: Props) {
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-6">
-      <h1 className="text-2xl font-bold">Privacy Policy</h1>
+    <div className="mx-auto max-w-3xl space-y-5 p-4">
+      {go && (
+        <button
+          type="button"
+          onClick={() => go(backTarget)}
+          className="rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 hover:border-teal-700 hover:text-teal-300"
+        >
+          ← Back to Credits
+        </button>
+      )}
 
-      <p className="text-gray-300">
-        We designed this app to be <span className="font-semibold">offline-first</span> and
-        <span className="font-semibold"> privacy-respecting</span>. Most features work entirely on your device.
-      </p>
+      <header className="space-y-2">
+        <p className="text-xs font-semibold uppercase text-teal-400">Your data stays yours</p>
+        <h1 className="text-2xl font-bold">Privacy Policy</h1>
+        <p className="leading-6 text-gray-300">
+          Athan PWA is designed to be offline-first and privacy-respecting. Most features run entirely on your device.
+        </p>
+      </header>
 
-      <h2 className="text-xl font-semibold">What we store</h2>
-      <ul className="list-disc pl-5 space-y-1 text-gray-200">
-        <li><span className="font-semibold">Settings</span> (calculation method, madhab, high-latitude, UI preferences).</li>
-        <li><span className="font-semibold">Quran bookmarks & reading state</span>.</li>
-        <li><span className="font-semibold">Last known location</span> (for offline prayer time computation) — lat/lon only.</li>
-        <li><span className="font-semibold">Salah tracker entries</span> (when you log them).</li>
-      </ul>
+      <section className="space-y-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
+        <div>
+          <h2 className="font-semibold text-teal-300">Stored on your device</h2>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-gray-300">
+            <li>Prayer calculation, Iqama, language, and display preferences.</li>
+            <li>Quran bookmarks, downloads, and reading progress.</li>
+            <li>Saved locations and the last known coordinates used for local calculations.</li>
+            <li>Salah, Ramadan, and Masjid profile records that you choose to save.</li>
+          </ul>
+        </div>
+        <div>
+          <h2 className="font-semibold text-teal-300">Not collected by Athan PWA</h2>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-gray-300">
+            <li>No account, advertising identifier, analytics profile, or tracking history.</li>
+            <li>No server-side storage of your personal tracker or preference data.</li>
+          </ul>
+        </div>
+      </section>
 
-      <h2 className="text-xl font-semibold">What we do NOT collect</h2>
-      <ul className="list-disc pl-5 space-y-1 text-gray-200">
-        <li>No accounts, no analytics, no ads.</li>
-        <li>No server-side storage of your personal data.</li>
-      </ul>
+      <section className="space-y-3 rounded-lg border border-gray-700 bg-gray-800 p-4">
+        <h2 className="text-lg font-semibold">Permissions and connectivity</h2>
+        <p className="text-sm leading-6 text-gray-300">
+          Location is used to calculate prayer times and Qibla direction. Browser notifications are optional, and
+          calendar files are generated on your device. You can revoke permissions through your browser at any time.
+        </p>
+        <p className="text-sm leading-6 text-gray-300">
+          Some searches and Quran downloads need an internet connection. Data already saved by the PWA may remain
+          available offline through browser storage and app caches.
+        </p>
+      </section>
 
-      <h2 className="text-xl font-semibold">Permissions</h2>
-      <ul className="list-disc pl-5 space-y-1 text-gray-200">
-        <li><span className="font-semibold">Location</span>: Used only to compute prayer times/Qibla. You can revoke it anytime.</li>
-        <li><span className="font-semibold">Notifications</span>: Optional. If enabled, they’re used for reminders; calendar export (.ics) is also available.</li>
-      </ul>
-
-      <h2 className="text-xl font-semibold">Connectivity</h2>
-      <p className="text-gray-300">
-        The app works offline. Some advanced features (e.g., online push) require internet. Quran text may be cached
-        for offline reading if fetched online or can be bundled locally depending on your build.
-      </p>
-      <h2 className="text-xl font-semibold">No Ads</h2>
-      <p className="text-gray-300">
-        This app is completely ad-free. We believe in a respectful user experience without distractions.
-        No Ads means no tracking or data collection for advertising purposes.
-      </p>
-
-      <h2 className="text-xl font-semibold">Contact</h2>
-      <p className="text-gray-300">
-        For questions about privacy, please contact us at aaa.maq.contact.us@gmail.com .
-      </p>
+      <section className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+        <h2 className="font-semibold">Contact</h2>
+        <p className="mt-1 text-sm text-gray-300">
+          Questions about privacy can be sent to{' '}
+          <a className="text-teal-300 underline" href="mailto:aaamaq.contact.us@gmail.com">
+            aaamaq.contact.us@gmail.com
+          </a>.
+        </p>
+      </section>
     </div>
   )
 }

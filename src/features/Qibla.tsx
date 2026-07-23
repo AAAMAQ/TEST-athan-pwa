@@ -387,10 +387,10 @@ function SimpleQibla({
           </div>
 
           <div
-            className="absolute left-1/2 top-1/2 h-[286px] w-[286px] -translate-x-1/2 -translate-y-1/2"
+            className="absolute left-1/2 top-1/2 h-[224px] w-[224px] -translate-x-1/2 -translate-y-1/2"
             style={{ transform: `translate(-50%, -50%) rotate(${markerRotation}deg)` }}
           >
-            <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 text-xl drop-shadow">🕋</div>
+            <div className="absolute left-1/2 top-0 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-lg shadow-lg shadow-gray-950/30">🕋</div>
           </div>
 
           <div className="absolute left-1/2 top-1/2 h-32 w-14 -translate-x-1/2 -translate-y-[46%]">
@@ -481,7 +481,7 @@ function AdvancedQibla({
 
           <div className="mx-auto w-56 h-56 rounded-full border border-gray-600 relative select-none">
             <div className="absolute inset-2 rounded-full border border-gray-700" />
-            <div className="absolute left-1/2 -top-3 -translate-x-1/2 text-xs">N</div>
+            <div className="absolute left-1/2 top-1/2 z-10 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-amber-200/80 bg-gray-900 text-base shadow">🕋</div>
             <div
               className="absolute left-1/2 top-1/2 w-1 h-24 bg-teal-400 origin-bottom rounded"
               style={{ transform: `translate(-50%,-100%) rotate(${needleRotation}deg)` }}

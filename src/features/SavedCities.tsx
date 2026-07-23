@@ -2,9 +2,17 @@ import { useMemo, useState } from 'react'
 import { COUNTRY_PRAYER_CONFIGS, getCountryPrayerConfig } from '../data/countryPrayerMethods'
 import { buildIcsForDates, downloadICS } from '../lib/ics'
 import { computePrayerTimes, type HighLatKey, type MadhabKey, type MethodKey } from '../lib/prayer'
-import { DEFAULT_PRAYER_CORRECTIONS, PRAYER_CORRECTION_KEYS, applyCorrections, type PrayerTimeCorrections } from '../lib/prayerCorrections'
+import {
+  DEFAULT_PRAYER_CORRECTIONS,
+  PRAYER_CORRECTION_KEYS,
+  applyCorrections,
+  formatSignedCorrection,
+  normalizeCorrectionMinutes,
+  type PrayerTimeCorrections
+} from '../lib/prayerCorrections'
 import {
   createSavedCity,
+  correctionsForSavedCity,
   deleteSavedCity,
   loadSavedCities,
   loadTravelDestinationId,
@@ -100,7 +108,7 @@ export default function SavedCities({ go }: Props) {
       calculationMode: 'custom-corrections',
       manualCorrections: {
         ...(selected.manualCorrections ?? DEFAULT_PRAYER_CORRECTIONS),
-        [key]: value
+        [key]: normalizeCorrectionMinutes(value)
       }
     })
   }
@@ -200,24 +208,36 @@ export default function SavedCities({ go }: Props) {
             <label className="space-y-1 text-sm">
               <span className="font-semibold">Calculation mode</span>
               <select value={selected.calculationMode} onChange={(event) => updateSelected({ ...selected, calculationMode: event.target.value as SavedCity['calculationMode'] })} className="w-full rounded bg-gray-900 border border-gray-700 px-3 py-2">
-                <option value="auto">Auto</option>
+                <option value="auto">Auto country defaults</option>
                 <option value="manual-method">Manual method</option>
-                <option value="custom-corrections">Custom corrections</option>
+                <option value="custom-corrections">Manual method + corrections</option>
               </select>
             </label>
-            <SelectField label="Method" value={selected.calculationMethod} options={METHODS} onChange={(value) => updateSelected({ ...selected, calculationMethod: value as MethodKey, calculationMode: 'manual-method' })} />
-            <SelectField label="Madhab" value={selected.madhab} options={MADHABS} onChange={(value) => updateSelected({ ...selected, madhab: value as MadhabKey, calculationMode: 'manual-method' })} />
-            <SelectField label="High latitude" value={selected.highLatitudeRule} options={HIGHLATS} onChange={(value) => updateSelected({ ...selected, highLatitudeRule: value as HighLatKey, calculationMode: 'manual-method' })} />
+            <SelectField label="Method" value={selected.calculationMethod} options={METHODS} onChange={(value) => updateSelected({ ...selected, calculationMethod: value as MethodKey, calculationMode: selected.calculationMode === 'custom-corrections' ? 'custom-corrections' : 'manual-method' })} />
+            <SelectField label="Madhab" value={selected.madhab} options={MADHABS} onChange={(value) => updateSelected({ ...selected, madhab: value as MadhabKey, calculationMode: selected.calculationMode === 'custom-corrections' ? 'custom-corrections' : 'manual-method' })} />
+            <SelectField label="High latitude" value={selected.highLatitudeRule} options={HIGHLATS} onChange={(value) => updateSelected({ ...selected, highLatitudeRule: value as HighLatKey, calculationMode: selected.calculationMode === 'custom-corrections' ? 'custom-corrections' : 'manual-method' })} />
           </div>
 
           <div className="space-y-2">
-            <h3 className="font-semibold">Personal Custom Profile</h3>
-            <p className="text-xs text-gray-400">Minute offsets are added to calculated times. They do not overwrite built-in country defaults.</p>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div>
+              <h3 className="font-semibold">Prayer time corrections</h3>
+              <p className="text-xs text-gray-400">
+                Use negative minutes for an earlier time and positive minutes for a later time. Preview and exports include these corrections.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
               {PRAYER_CORRECTION_KEYS.map((key) => (
-                <NumberField key={key} label={`${key} correction`} value={(selected.manualCorrections ?? DEFAULT_PRAYER_CORRECTIONS)[key]} onChange={(value) => updateCorrection(key, value)} />
+                <SignedCorrectionField
+                  key={key}
+                  label={key}
+                  value={(selected.manualCorrections ?? DEFAULT_PRAYER_CORRECTIONS)[key]}
+                  onChange={(value) => updateCorrection(key, value)}
+                />
               ))}
             </div>
+            <p className="rounded bg-gray-950/60 px-3 py-2 text-xs text-gray-300">
+              Active offsets: {PRAYER_CORRECTION_KEYS.map((key) => `${key} ${formatSignedCorrection((selected.manualCorrections ?? DEFAULT_PRAYER_CORRECTIONS)[key])}`).join(' · ')} minutes
+            </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -261,7 +281,7 @@ function makeRows(city: SavedCity, from: Date, to: Date) {
   const rows = []
   const current = new Date(from)
   while (current <= to) {
-    const times = applyCorrections(computePrayerTimes({ latitude: city.latitude, longitude: city.longitude }, current, settings), city.calculationMode === 'custom-corrections' ? city.manualCorrections : undefined)
+    const times = applyCorrections(computePrayerTimes({ latitude: city.latitude, longitude: city.longitude }, current, settings), correctionsForSavedCity(city))
     rows.push({ date: formatDate(current), times })
     current.setDate(current.getDate() + 1)
   }
@@ -275,7 +295,7 @@ function timetableOptions(city: SavedCity, fromDate: string, toDate: string) {
     fromDate: parseDate(fromDate),
     toDate: parseDate(toDate),
     settings: settingsForSavedCity(city),
-    corrections: city.calculationMode === 'custom-corrections' ? city.manualCorrections : undefined
+    corrections: correctionsForSavedCity(city)
   }
 }
 
@@ -285,6 +305,49 @@ function TextField({ label, value, onChange }: { label: string; value: string; o
 
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
   return <label className="space-y-1 text-sm"><span className="font-semibold">{label}</span><input type="number" value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full rounded bg-gray-900 border border-gray-700 px-3 py-2" /></label>
+}
+
+function SignedCorrectionField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  const normalized = normalizeCorrectionMinutes(value)
+  return (
+    <div className="rounded border border-gray-700 bg-gray-900 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-semibold">{label}</span>
+        <span className={`min-w-12 rounded px-2 py-1 text-center text-sm font-bold ${normalized === 0 ? 'bg-gray-800 text-gray-300' : normalized > 0 ? 'bg-teal-950 text-teal-300' : 'bg-amber-950/60 text-amber-200'}`}>
+          {formatSignedCorrection(normalized)}
+        </span>
+      </div>
+      <div className="grid grid-cols-[2.5rem_1fr_2.5rem] gap-2">
+        <button
+          type="button"
+          onClick={() => onChange(normalized - 1)}
+          aria-label={`Move ${label} one minute earlier`}
+          className="h-10 rounded bg-gray-800 text-lg font-bold hover:bg-gray-700"
+        >
+          −
+        </button>
+        <input
+          type="number"
+          min="-180"
+          max="180"
+          step="1"
+          value={normalized}
+          onChange={(event) => onChange(Number(event.target.value))}
+          aria-label={`${label} correction in minutes`}
+          className="min-w-0 rounded border border-gray-700 bg-gray-950 px-2 text-center"
+        />
+        <button
+          type="button"
+          onClick={() => onChange(normalized + 1)}
+          aria-label={`Move ${label} one minute later`}
+          className="h-10 rounded bg-gray-800 text-lg font-bold hover:bg-gray-700"
+        >
+          +
+        </button>
+      </div>
+      <p className="text-center text-[11px] text-gray-500">− earlier · + later</p>
+    </div>
+  )
 }
 
 function SelectField({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {

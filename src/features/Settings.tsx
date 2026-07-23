@@ -1,81 +1,254 @@
 import { useEffect, useState } from 'react'
+import PwaStatus from '../components/PwaStatus'
 import {
-  loadSettings,
-  saveSettings,
-  type MethodKey,
-  type MadhabKey,
-  type HighLatKey,
-  type PrayerSettings,
-  computePrayerTimes
-} from '../lib/prayer'
-import { refreshDeviceLocation } from '../lib/locationStore'
+  COUNTRY_PRAYER_CONFIGS,
+  detectCountryCode,
+  getCountryPrayerConfig
+} from '../data/countryPrayerMethods'
 import { buildIcsForDates, downloadICS } from '../lib/ics'
 import { LANGUAGE_LABELS, loadLanguage, saveLanguage, t, type AppLanguage } from '../lib/i18n'
-import PwaStatus from '../components/PwaStatus'
+import { loadCachedLocation, refreshDeviceLocation } from '../lib/locationStore'
+import {
+  computePrayerTimes,
+  loadSettings,
+  saveSettings,
+  type HighLatKey,
+  type MadhabKey,
+  type MethodKey,
+  type PrayerSettings
+} from '../lib/prayer'
 
-const METHODS: MethodKey[] = ['MuslimWorldLeague','UmmAlQura','Egyptian','Karachi','Dubai','Qatar','Kuwait','MoonsightingCommittee','NorthAmerica','Singapore','Tehran','Turkey']
-const MADHABS: MadhabKey[] = ['Shafi','Hanafi']
-const HIGHLATS: HighLatKey[] = ['MiddleOfTheNight','SeventhOfTheNight','TwilightAngle']
-const REMINDER_OFFSETS: number[] = [5, 10, 15, 20, 30, 45, 50]
+const METHODS: MethodKey[] = [
+  'MuslimWorldLeague',
+  'UmmAlQura',
+  'Egyptian',
+  'Karachi',
+  'Dubai',
+  'Qatar',
+  'Kuwait',
+  'MoonsightingCommittee',
+  'NorthAmerica',
+  'Singapore',
+  'Tehran',
+  'Turkey'
+]
+const MADHABS: MadhabKey[] = ['Shafi', 'Hanafi']
+const HIGHLATS: HighLatKey[] = ['MiddleOfTheNight', 'SeventhOfTheNight', 'TwilightAngle']
+const REMINDER_OFFSETS = [5, 10, 15, 20, 30, 45, 50]
+const COUNTRIES = [...COUNTRY_PRAYER_CONFIGS].sort((a, b) => a.countryName.localeCompare(b.countryName))
 
 const LS_OFFSET = 'reminderOffsetMin'
 const LS_ISHA_FIXED = 'ishaFixedTime'
+const LS_CALCULATION_MODE = 'athan.prayer.calculationMode.v1'
+const LS_AUTO_COUNTRY = 'athan.prayer.autoCountry.v1'
+
+type CalculationMode = 'auto' | 'manual'
 
 type Props = {
   go?: (screen: string) => void
 }
 
-export default function Settings({ go }: Props){
-  const [s,setS]=useState(loadSettings())
-  const [language,setLanguage]=useState<AppLanguage>(() => loadLanguage())
-  const [offsetMin,setOffsetMin]=useState<number>(()=> {
-    // prefer new key; fallback to legacy key 'reminderMinutesBefore'
-    const raw = localStorage.getItem(LS_OFFSET) ?? localStorage.getItem('reminderMinutesBefore') ?? '20'
-    const n = parseInt(raw,10)
-    return Number.isFinite(n) ? Math.max(1, n) : 20
-  })
-  const [ishaTime,setIshaTime]=useState<string>(()=> localStorage.getItem(LS_ISHA_FIXED) || '22:00')
-  const [msg,setMsg]=useState('')
+type InitialPrayerState = {
+  calculationMode: CalculationMode
+  countryCode: string
+  manualSettings: PrayerSettings
+}
 
-  function update<K extends keyof PrayerSettings>(k: K, v: PrayerSettings[K]) {
-    const n: PrayerSettings = { ...s, [k]: v } as PrayerSettings
-    setS(n); saveSettings(n)
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writeStorage(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Keep Settings usable in restricted browsing modes.
+  }
+}
+
+function settingsForCountry(countryCode: string): PrayerSettings {
+  const config = getCountryPrayerConfig(countryCode)
+  return {
+    method: config.defaultMethod,
+    madhab: config.defaultMadhab,
+    highLatRule: config.highLatitudeRule
+  }
+}
+
+function loadInitialPrayerState(): InitialPrayerState {
+  const storedMode = readStorage(LS_CALCULATION_MODE)
+  const hasLegacyManualSettings = Boolean(
+    readStorage('method') || readStorage('madhab') || readStorage('highLatRule')
+  )
+  const calculationMode: CalculationMode = storedMode === 'auto'
+    ? 'auto'
+    : storedMode === 'manual' || hasLegacyManualSettings
+      ? 'manual'
+      : 'auto'
+  const cachedCountry = loadCachedLocation()?.countryCode
+  const countryCode = detectCountryCode(cachedCountry || readStorage(LS_AUTO_COUNTRY)) || ''
+
+  return {
+    calculationMode,
+    countryCode,
+    manualSettings: loadSettings()
+  }
+}
+
+function methodLabel(method: MethodKey): string {
+  const labels: Record<MethodKey, string> = {
+    MuslimWorldLeague: 'Muslim World League',
+    UmmAlQura: 'Umm al-Qura',
+    Egyptian: 'Egyptian General Authority',
+    Karachi: 'University of Islamic Sciences, Karachi',
+    Dubai: 'Dubai',
+    Qatar: 'Qatar',
+    Kuwait: 'Kuwait',
+    MoonsightingCommittee: 'Moonsighting Committee',
+    NorthAmerica: 'Islamic Society of North America',
+    Singapore: 'Singapore',
+    Tehran: 'Tehran',
+    Turkey: 'Turkey'
+  }
+  return labels[method]
+}
+
+function countryLabel(countryCode: string, fallback: string, language: AppLanguage): string {
+  try {
+    return new Intl.DisplayNames([language], { type: 'region' }).of(countryCode) || fallback
+  } catch {
+    return fallback
+  }
+}
+
+export default function Settings({ go }: Props) {
+  const [initial] = useState(loadInitialPrayerState)
+  const [manualSettings, setManualSettings] = useState(initial.manualSettings)
+  const [calculationMode, setCalculationMode] = useState<CalculationMode>(initial.calculationMode)
+  const [countryCode, setCountryCode] = useState(initial.countryCode)
+  const [language, setLanguage] = useState<AppLanguage>(() => loadLanguage())
+  const [offsetMin, setOffsetMin] = useState(() => {
+    const raw = readStorage(LS_OFFSET) ?? readStorage('reminderMinutesBefore') ?? '20'
+    const value = Number.parseInt(raw, 10)
+    return Number.isFinite(value) ? Math.max(1, value) : 20
+  })
+  const [ishaTime, setIshaTime] = useState(() => readStorage(LS_ISHA_FIXED) || '22:00')
+  const [message, setMessage] = useState('')
+
+  const autoConfig = getCountryPrayerConfig(countryCode)
+  const effectiveSettings = calculationMode === 'auto'
+    ? settingsForCountry(countryCode)
+    : manualSettings
+
+  useEffect(() => {
+    if (calculationMode !== 'auto') return
+    saveSettings(settingsForCountry(countryCode))
+  }, [calculationMode, countryCode])
+
+  useEffect(() => {
+    writeStorage(LS_OFFSET, String(Math.max(1, offsetMin)))
+  }, [offsetMin])
+
+  useEffect(() => {
+    writeStorage(LS_ISHA_FIXED, ishaTime)
+  }, [ishaTime])
+
+  function updateManualSetting<K extends keyof PrayerSettings>(key: K, value: PrayerSettings[K]) {
+    const next = { ...manualSettings, [key]: value }
+    setManualSettings(next)
+    saveSettings(next)
+  }
+
+  function changeCalculationMode(mode: CalculationMode) {
+    if (mode === calculationMode) return
+    if (mode === 'manual') {
+      const currentAutoSettings = settingsForCountry(countryCode)
+      setManualSettings(currentAutoSettings)
+      saveSettings(currentAutoSettings)
+    }
+    setCalculationMode(mode)
+    writeStorage(LS_CALCULATION_MODE, mode)
+    setMessage(mode === 'auto' ? t('autoApplied', language) : t('manualOverride', language))
+  }
+
+  function changeAutoCountry(nextCountryCode: string) {
+    setCountryCode(nextCountryCode)
+    writeStorage(LS_AUTO_COUNTRY, nextCountryCode)
+    if (calculationMode === 'auto') {
+      saveSettings(settingsForCountry(nextCountryCode))
+      setMessage(t('autoApplied', language))
+    }
+  }
+
+  async function useCurrentLocationCountry() {
+    const cachedCountryCode = loadCachedLocation()?.countryCode
+    const state = await refreshDeviceLocation()
+    if (!state.location) {
+      setMessage(t('locationPermissionRequired', language))
+      return
+    }
+    const locationCountryCode = state.location.countryCode || cachedCountryCode
+    const detected = detectCountryCode(locationCountryCode)
+    if (!locationCountryCode) {
+      setMessage(t('locationCountryUnavailable', language))
+      return
+    }
+    if (detected) changeAutoCountry(detected)
   }
 
   function updateLanguage(value: AppLanguage) {
     setLanguage(value)
     saveLanguage(value)
-    setMsg('Language preference saved on this device.')
+    setMessage(t('languageSaved', value))
   }
 
-  useEffect(()=>{ localStorage.setItem(LS_OFFSET, String(Math.max(1, offsetMin))) },[offsetMin])
-  useEffect(()=>{ localStorage.setItem(LS_ISHA_FIXED, ishaTime) },[ishaTime])
+  async function exportIcs(days: number, label: string) {
+    const locationState = await refreshDeviceLocation()
+    if (!locationState.location) {
+      setMessage(t('locationPermissionRequired', language))
+      return
+    }
 
-  async function exportIcs(days:number, label:string){
-    const loc=await refreshDeviceLocation(); if(!loc.location) { setMsg('Location permission required.'); return }
-    const base=new Date()
-    const effectiveOffset = Math.max(1, offsetMin)
-    const all:{title:string;when:Date}[]=[]
-    for(let d=0; d<days; d++){
-      const day=new Date(base); day.setDate(day.getDate()+d)
-      const pt=computePrayerTimes({latitude:loc.location.latitude, longitude:loc.location.longitude}, day, s)
-      all.push(
-        {title:'Fajr',when:pt.fajr},
-        {title:'Sunrise',when:pt.sunrise},
-        {title:'Dhuhr',when:pt.dhuhr},
-        {title:'Asr',when:pt.asr},
-        {title:'Maghrib',when:pt.maghrib},
-        {title:'Isha',when:pt.isha}
+    const base = new Date()
+    const all: Array<{ title: string; when: Date }> = []
+    for (let dayIndex = 0; dayIndex < days; dayIndex += 1) {
+      const day = new Date(base)
+      day.setDate(day.getDate() + dayIndex)
+      const times = computePrayerTimes(
+        {
+          latitude: locationState.location.latitude,
+          longitude: locationState.location.longitude
+        },
+        day,
+        effectiveSettings
       )
-      if(ishaTime){
-        const [h,m]=ishaTime.split(':').map(Number)
-        const custom=new Date(day); custom.setHours(h??23,m??59,0,0)
-        all.push({title:'Isha Reminder (custom time)', when:custom})
+      all.push(
+        { title: 'Fajr', when: times.fajr },
+        { title: 'Sunrise', when: times.sunrise },
+        { title: 'Dhuhr', when: times.dhuhr },
+        { title: 'Asr', when: times.asr },
+        { title: 'Maghrib', when: times.maghrib },
+        { title: 'Isha', when: times.isha }
+      )
+      if (ishaTime) {
+        const [hours, minutes] = ishaTime.split(':').map(Number)
+        const customIsha = new Date(day)
+        customIsha.setHours(hours ?? 22, minutes ?? 0, 0, 0)
+        all.push({ title: 'Isha Reminder (custom time)', when: customIsha })
       }
     }
+
+    const effectiveOffset = Math.max(1, offsetMin)
     const ics = buildIcsForDates(all, `Athan Reminders (${label})`, 'ATHAN-PWA', effectiveOffset)
-    downloadICS(`athan-reminders-${label}_${loc.location.latitude.toFixed(3)}_${loc.location.longitude.toFixed(3)}.ics`, ics)
-    setMsg(`Downloaded .ics for ${label}.`)
+    downloadICS(
+      `athan-reminders-${label}_${locationState.location.latitude.toFixed(3)}_${locationState.location.longitude.toFixed(3)}.ics`,
+      ics
+    )
+    setMessage(t('calendarDownloaded', language))
   }
 
   function openBackupRestore() {
@@ -83,158 +256,247 @@ export default function Settings({ go }: Props){
     else window.location.hash = '#BackupRestore'
   }
 
-  return (
-    <div className="space-y-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold">{t('settings', language)}</h2>
+  const selectClass = 'mt-2 w-full rounded-md border border-gray-700 bg-gray-950 px-3 py-3 text-sm text-gray-100 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
+  const sectionClass = 'rounded-lg border border-gray-700/80 bg-gray-800/90 p-4 shadow-sm sm:p-5'
 
-      <section className="space-y-4 p-3 rounded-md bg-gray-800">
-        <div>
-          <label className="block mb-1">Language:</label>
-          <select
-            className="text-black px-2 py-1 rounded"
-            value={language}
-            onChange={e=>updateLanguage(e.target.value as AppLanguage)}
-          >
-            {(Object.keys(LANGUAGE_LABELS) as AppLanguage[]).map((key) => (
-              <option key={key} value={key}>{LANGUAGE_LABELS[key]}</option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-400 mt-1">
-            Core labels update first; more translations can be added gradually.
-          </p>
+  return (
+    <div className="mx-auto max-w-2xl space-y-4 pb-6">
+      <header className="space-y-1 px-1">
+        <h1 className="text-2xl font-bold text-white">{t('settings', language)}</h1>
+        <p className="text-sm text-gray-400">{t('settingsSubtitle', language)}</p>
+      </header>
+
+      <section className={sectionClass}>
+        <div className="mb-4">
+          <h2 className="font-semibold text-white">{t('languageAndLayout', language)}</h2>
+          <p className="mt-1 text-xs leading-5 text-gray-400">{t('languageHelp', language)}</p>
         </div>
-        <div><label className="block mb-1">Calculation Method:</label>
-          <select className="text-black" value={s.method} onChange={e=>update('method', e.target.value as MethodKey)}>{METHODS.map(m=><option key={m} value={m}>{m}</option>)}</select>
-        </div>
-        <div><label className="block mb-1">Madhab:</label>
-          <select className="text-black" value={s.madhab} onChange={e=>update('madhab', e.target.value as MadhabKey)}>{MADHABS.map(m=><option key={m} value={m}>{m}</option>)}</select>
-        </div>
-        <div><label className="block mb-1">High Latitude Rule:</label>
-          <select className="text-black" value={s.highLatRule} onChange={e=>update('highLatRule', e.target.value as HighLatKey)}>{HIGHLATS.map(h=><option key={h} value={h}>{h}</option>)}</select>
-        </div>
-        <p className="text-xs text-gray-400">
-          Tip: Read the Need Help page for guidance on which settings to choose.
-        </p>
+        <label className="block text-sm font-medium text-gray-300" htmlFor="app-language">
+          {t('languageAndLayout', language)}
+        </label>
+        <select
+          id="app-language"
+          className={selectClass}
+          value={language}
+          onChange={(event) => updateLanguage(event.target.value as AppLanguage)}
+        >
+          {(Object.keys(LANGUAGE_LABELS) as AppLanguage[]).map((key) => (
+            <option key={key} value={key}>{LANGUAGE_LABELS[key]}</option>
+          ))}
+        </select>
       </section>
 
+      <section className={sectionClass}>
+        <div className="mb-4">
+          <h2 className="font-semibold text-white">{t('prayerCalculation', language)}</h2>
+          <p className="mt-1 text-xs leading-5 text-gray-400">{t('prayerCalculationHelp', language)}</p>
+        </div>
 
-      <section className="space-y-4 p-3 rounded-md bg-gray-800">
-        <h3 className="font-semibold">Reminders via Calendar (.ics)</h3>
-
-        <p className="text-xs text-gray-400">
-          Tip: Calendar export (.ics) lets your device&apos;s calendar handle alerts even when the PWA is closed.
-        </p>
-
-        <div className="flex flex-wrap items-end gap-4">
-          <div>
-            <label className="block text-sm text-gray-300">Reminder offset (minutes before each prayer)</label>
-            <div className="flex items-center gap-2 mt-1">
-              <select
-                className="text-black px-2 py-1 rounded w-32"
-                value={offsetMin}
-                onChange={e => setOffsetMin(Math.max(1, parseInt(e.target.value || '20', 10)))}
+        <div>
+          <span className="block text-sm font-medium text-gray-300">{t('calculationMode', language)}</span>
+          <div className="mt-2 grid grid-cols-2 rounded-md border border-gray-700 bg-gray-950 p-1">
+            {(['auto', 'manual'] as CalculationMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => changeCalculationMode(mode)}
+                aria-pressed={calculationMode === mode}
+                className={`min-h-10 rounded px-3 text-sm font-semibold transition ${
+                  calculationMode === mode
+                    ? 'bg-teal-600 text-white'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                }`}
               >
-                {REMINDER_OFFSETS.map(v => (
-                  <option key={v} value={v}>
-                    {v} minutes
+                {t(mode, language)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {calculationMode === 'auto' ? (
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300" htmlFor="auto-country">
+                {t('autoCountry', language)}
+              </label>
+              <select
+                id="auto-country"
+                className={selectClass}
+                value={countryCode}
+                onChange={(event) => changeAutoCountry(event.target.value)}
+              >
+                {!countryCode && <option value="">Global fallback</option>}
+                {COUNTRIES.map((country) => (
+                  <option key={country.countryCode} value={country.countryCode}>
+                    {countryLabel(country.countryCode, country.countryName, language)}
                   </option>
                 ))}
               </select>
               <button
                 type="button"
-                onClick={() => {
-                  // Explicitly persist and confirm the current reminder offset
-                  localStorage.setItem(LS_OFFSET, String(Math.max(1, offsetMin)));
-                  setMsg(`Reminder offset updated to ${offsetMin} minutes before each prayer.`);
-                }}
-                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-sm"
+                onClick={useCurrentLocationCountry}
+                className="mt-2 min-h-10 rounded-md border border-teal-700 bg-teal-950/40 px-3 text-sm font-semibold text-teal-200 transition hover:bg-teal-900/60"
               >
-                Update reminder
+                {t('useCurrentLocation', language)}
               </button>
+              <p className="mt-2 text-xs leading-5 text-gray-400">{t('autoCountryHelp', language)}</p>
             </div>
-            <p className="text-xs text-gray-400 mt-1">
-              This offset is applied before each prayer time when we generate the .ics file.
-            </p>
+
+            <dl className="grid gap-2 rounded-md border border-teal-900/70 bg-gray-950/70 p-3 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-xs text-gray-500">{t('calculationMethod', language)}</dt>
+                <dd className="mt-1 font-medium text-teal-200">{methodLabel(autoConfig.defaultMethod)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500">{t('asrTiming', language)}</dt>
+                <dd className="mt-1 font-medium text-teal-200">
+                  {t(autoConfig.defaultMadhab === 'Hanafi' ? 'lateAsr' : 'earlyAsr', language)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500">{t('highLatitudeRule', language)}</dt>
+                <dd className="mt-1 font-medium text-teal-200">
+                  {t(highLatitudeTranslationKey(autoConfig.highLatitudeRule), language)}
+                </dd>
+              </div>
+            </dl>
           </div>
-
-          <div>
-            <label className="block text-sm text-gray-300">Fixed Isha reminder (HH:mm)</label>
-            <input
-              className="text-black px-2 py-1 rounded w-28"
-              type="time"
-              value={ishaTime}
-              onChange={e => setIshaTime(e.target.value)}
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Optional extra reminder every night between Isha and Fajr (added as a separate calendar event).
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-           <button
-            onClick={() => exportIcs(1, '1days')}
-            className="px-3 py-1 rounded bg-red-600 hover:bg-blue-500"
-          >
-            Export 1 day (.ics)
-          </button>
-
-            <button
-            onClick={() => exportIcs(7, '7days')}
-            className="px-3 py-1 rounded bg-orange-600 hover:bg-blue-500"
-          >
-            Export 7 days (.ics)
-          </button>
-
-          <button
-            onClick={() => exportIcs(30, '30days')}
-            className="px-3 py-1 rounded bg-yellow-600 hover:bg-blue-500"
-          >
-            Export 30 Days (.ics)
-          </button>
-          <button
-            onClick={() => exportIcs(365, '1year')}
-            className="px-3 py-1 rounded bg-green-600 hover:bg-blue-500"
-          >
-            Export 1 Year (.ics)
-          </button>
-        </div>
-
-        {msg && (
-          <div
-            role="status"
-            className="mt-2 rounded bg-yellow-900/40 border border-yellow-700 px-3 py-2 text-sm text-yellow-200"
-          >
-            {msg}
+        ) : (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-gray-300">
+              {t('calculationMethod', language)}
+              <select
+                className={selectClass}
+                value={manualSettings.method}
+                onChange={(event) => updateManualSetting('method', event.target.value as MethodKey)}
+              >
+                {METHODS.map((method) => <option key={method} value={method}>{methodLabel(method)}</option>)}
+              </select>
+            </label>
+            <label className="block text-sm font-medium text-gray-300">
+              {t('asrTiming', language)}
+              <select
+                className={selectClass}
+                value={manualSettings.madhab}
+                onChange={(event) => updateManualSetting('madhab', event.target.value as MadhabKey)}
+              >
+                {MADHABS.map((madhab) => (
+                  <option key={madhab} value={madhab}>
+                    {t(madhab === 'Hanafi' ? 'lateAsr' : 'earlyAsr', language)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm font-medium text-gray-300 sm:col-span-2">
+              {t('highLatitudeRule', language)}
+              <select
+                className={selectClass}
+                value={manualSettings.highLatRule}
+                onChange={(event) => updateManualSetting('highLatRule', event.target.value as HighLatKey)}
+              >
+                {HIGHLATS.map((rule) => (
+                  <option key={rule} value={rule}>{t(highLatitudeTranslationKey(rule), language)}</option>
+                ))}
+              </select>
+            </label>
           </div>
         )}
-
-        <p className="text-xs text-gray-400">
-          If you feel unfomfortable exporting 7 days, 1 month or 1 year at once,<span className="font-semibold"> try exporting the 1 day .ics file. </span>
-          That way you can test it first without needing to mass delete events from your calendar.
-          </p>
-
-        <p className="text-xs text-gray-400">
-          .ics is generated with your current location &amp; settings. If you travel, export again so your calendar
-          matches your new city.
-          
-        </p>
+        <p className="mt-4 text-xs leading-5 text-amber-200/80">{t('regionalGuidance', language)}</p>
       </section>
 
-      <section className="space-y-3 p-3 rounded-md bg-gray-800">
-        <h3 className="font-semibold">Local Data</h3>
-        <p className="text-xs text-gray-400">
-          Export, import, or reset Athan PWA data stored on this device.
-        </p>
+      <section className={sectionClass}>
+        <div className="mb-4">
+          <h2 className="font-semibold text-white">{t('calendarReminders', language)}</h2>
+          <p className="mt-1 text-xs leading-5 text-gray-400">{t('calendarRemindersHelp', language)}</p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-medium text-gray-300">
+            {t('reminderOffset', language)}
+            <select
+              className={selectClass}
+              value={offsetMin}
+              onChange={(event) => setOffsetMin(Math.max(1, Number.parseInt(event.target.value || '20', 10)))}
+            >
+              {REMINDER_OFFSETS.map((value) => (
+                <option key={value} value={value}>{value} {t('minutes', language)}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-medium text-gray-300">
+            {t('fixedIshaReminder', language)}
+            <input
+              className={selectClass}
+              type="time"
+              value={ishaTime}
+              onChange={(event) => setIshaTime(event.target.value)}
+            />
+            <span className="mt-2 block text-xs leading-5 text-gray-400">{t('fixedIshaHelp', language)}</span>
+          </label>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            writeStorage(LS_OFFSET, String(Math.max(1, offsetMin)))
+            setMessage(t('reminderUpdated', language))
+          }}
+          className="mt-4 min-h-10 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-600"
+        >
+          {t('updateReminder', language)}
+        </button>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <ExportButton label={t('exportOneDay', language)} onClick={() => exportIcs(1, '1-day')} />
+          <ExportButton label={t('exportSevenDays', language)} onClick={() => exportIcs(7, '7-days')} />
+          <ExportButton label={t('exportThirtyDays', language)} onClick={() => exportIcs(30, '30-days')} />
+          <ExportButton label={t('exportOneYear', language)} onClick={() => exportIcs(365, '1-year')} />
+        </div>
+        <p className="mt-3 text-xs leading-5 text-gray-400">{t('calendarTestHelp', language)}</p>
+        <p className="text-xs leading-5 text-gray-400">{t('calendarTravelHelp', language)}</p>
+      </section>
+
+      <section className={sectionClass}>
+        <h2 className="font-semibold text-white">{t('localData', language)}</h2>
+        <p className="mt-1 text-xs leading-5 text-gray-400">{t('localDataHelp', language)}</p>
         <button
           type="button"
           onClick={openBackupRestore}
-          className="px-3 py-2 rounded bg-teal-600 hover:bg-teal-500 font-semibold"
+          className="mt-4 min-h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-600"
         >
-          Backup and Restore
+          {t('backupRestore', language)}
         </button>
       </section>
-      <PwaStatus />
+
+      <PwaStatus language={language} />
+
+      {message && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="sticky bottom-20 rounded-md border border-teal-800 bg-gray-950 px-4 py-3 text-sm text-teal-200 shadow-lg"
+        >
+          {message}
+        </div>
+      )}
     </div>
+  )
+}
+
+function highLatitudeTranslationKey(rule: HighLatKey): string {
+  if (rule === 'SeventhOfTheNight') return 'seventhOfNight'
+  if (rule === 'TwilightAngle') return 'twilightAngle'
+  return 'middleOfNight'
+}
+
+function ExportButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="min-h-11 rounded-md border border-gray-700 bg-gray-900 px-3 text-xs font-semibold text-gray-200 transition hover:border-teal-700 hover:bg-gray-700"
+    >
+      {label}
+    </button>
   )
 }

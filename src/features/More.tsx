@@ -6,6 +6,16 @@ type Props = {
 
 const items = [
   {
+    titleKey: 'deepSearchAthan',
+    descriptionKey: 'deepSearchAthanDescription',
+    screen: 'AthanEngine'
+  },
+  {
+    titleKey: 'iqamaTimes',
+    descriptionKey: 'iqamaTimesDescription',
+    screen: 'Iqama'
+  },
+  {
     titleKey: 'masjidMode',
     descriptionKey: 'mosqueProfilesDescription',
     screen: 'MasjidMode'
@@ -29,6 +39,11 @@ const items = [
     titleKey: 'backupRestore',
     descriptionKey: 'backupRestoreDescription',
     screen: 'BackupRestore'
+  },
+  {
+    titleKey: 'onboarding',
+    descriptionKey: 'onboardingDescription',
+    screen: 'Onboarding'
   }
 ]
 

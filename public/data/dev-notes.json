@@ -1,0 +1,75 @@
+[
+  {
+    "id": "2026-07-23-release",
+    "date": "2026-07-23",
+    "version": "v3.1.0",
+    "title": "A clearer, more connected Athan PWA",
+    "summary": [
+      "Added Auto prayer calculation with an offline country profile for method, Asr timing, and high-latitude defaults, while keeping full manual control. Settings now follows the dark navy and teal interface, official language choices are English and Arabic with RTL support, and PWA status shares one safe install and update system with Credits.",
+      "Moved Deep Search Athan under More, separated Iqama Times, added saved-city generation and signed prayer corrections, introduced a compact current-prayer card and guided App Guide, and refined Simple and Advanced Qibla markers.",
+      "Rebuilt Quran around Quick Access, Continue Reading, recent Surah progress, search, working bookmark clearing, offline controls, and focused Muhammad Asad, Pickthall, Saheeh International, and Yusuf Ali translation previews. Credits navigation now returns correctly, Vision links to the official website and GitHub, and release notes are maintained in this JSON file."
+    ]
+  },
+  {
+    "id": "2026-06-19-v3",
+    "date": "2026-06-19",
+    "version": "v3.0.0",
+    "title": "Unified app update",
+    "summary": [
+      "Version v3.0.0 brings major improvements across Athan PWA, including Saved Cities and Travel Mode, automatic country-based prayer settings, manual prayer corrections, smarter Quran progress, Quran offline support controls, improved Qibla modes and calibration guidance, Masjid and Iqama integration, expanded calendar and timetable exports, Salah insights, Friday Jumu'ah updates, PWA improvements, visual consistency, performance optimization, and bug fixes.",
+      "Some advanced Quran study features, such as bundled Tafsir, word-by-word data, and recitation providers, now have safe UI structure but still need real datasets or provider configuration in a future update."
+    ]
+  },
+  {
+    "id": "2026-06-17-v2-03",
+    "date": "2026-06-17",
+    "version": "v2.03.0",
+    "title": "PWA, Iqama calendar, and language foundations",
+    "summary": [
+      "Refreshed the PWA icon set with proper install, maskable, Apple touch, and favicon assets. Added a Credits page Update button so users can clear the app shell cache and reload the latest deployed version without deleting local settings or tracker data.",
+      "Added Iqama calendar export for local device prayer times, including date ranges, included-prayer controls, fixed-time and Athan-offset rules, and optional Friday morning Jumu'ah reminders. The local Prayer Times screen now shows Jumu'ah instead of Dhuhr on Fridays as a display-only label.",
+      "Started basic language preference support for core navigation and prayer labels, saved privately on the device for future translation expansion."
+    ]
+  },
+  {
+    "id": "2026-05-29-iqama",
+    "date": "2026-05-29",
+    "title": "Iqama Times update",
+    "summary": [
+      "Added early Iqama Times support inside Advanced Athan. Users can now set Iqama rules for each prayer using either minutes after Athan or a fixed time, with AM/PM and 24-hour display options. This feature is still being improved and currently focuses on local device prayer times."
+    ]
+  },
+  {
+    "id": "2026-05-18-v2-01-1",
+    "date": "2026-05-18",
+    "version": "v2.01.1",
+    "title": "Version milestone and URL update",
+    "summary": [
+      "Reached a new update milestone with version v2.01.1. The public app URL/domain is being updated so the app can move away from the older test link and use a cleaner release address."
+    ]
+  },
+  {
+    "id": "2026-05-18-advanced-athan",
+    "date": "2026-05-18",
+    "title": "Advanced Athan improvements",
+    "summary": [
+      "Added support for searching locations, previewing prayer times, choosing calculation settings, and exporting custom calendar reminder files for selected date ranges."
+    ]
+  },
+  {
+    "id": "2026-05-18-location",
+    "date": "2026-05-18",
+    "title": "Location and timezone handling",
+    "summary": [
+      "Improved searched-location handling so Advanced Athan can better display prayer times for different cities and countries instead of relying only on the user's current device location."
+    ]
+  },
+  {
+    "id": "2026-05-18-calendar",
+    "date": "2026-05-18",
+    "title": "Calendar reminder export",
+    "summary": [
+      "Updated the custom .ics export experience so users can create calendar reminders for a chosen location, calculation method, Madhab, reminder offset, and date range."
+    ]
+  }
+]

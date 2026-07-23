@@ -22,12 +22,81 @@ export const GLOBAL_FALLBACK_COUNTRY_CONFIG: CountryPrayerConfig = {
   sourceType: 'fallback'
 }
 
+type RegionalDefaults = Pick<CountryPrayerConfig, 'defaultMethod' | 'alternativeMethods' | 'defaultMadhab' | 'highLatitudeRule'>
+
+const KARACHI_HANAFI_COUNTRIES = new Set(['AF', 'NP'])
+const TURKEY_HANAFI_COUNTRIES = new Set(['AL', 'AZ', 'BA', 'BG', 'KZ', 'KG', 'MK', 'XK', 'TJ', 'TM', 'UZ'])
+const EGYPTIAN_REGION_COUNTRIES = new Set(['DZ', 'IQ', 'JO', 'LB', 'LY', 'MA', 'PS', 'SD', 'SY', 'TN'])
+const UMM_AL_QURA_REGION_COUNTRIES = new Set(['BH', 'OM', 'YE'])
+const SINGAPORE_REGION_COUNTRIES = new Set(['BN'])
+const NORTH_AMERICA_REGION_COUNTRIES = new Set(['MX', 'PR', 'VI'])
+const TWILIGHT_ANGLE_COUNTRIES = new Set([
+  'AT', 'AX', 'BE', 'CH', 'CZ', 'DK', 'EE', 'FO', 'GL', 'IE', 'IS', 'LT', 'LU', 'LV', 'PL', 'RU', 'SJ', 'SK', 'UA'
+])
+
+function regionalDefaults(countryCode: string): RegionalDefaults {
+  if (KARACHI_HANAFI_COUNTRIES.has(countryCode)) {
+    return {
+      defaultMethod: 'Karachi',
+      alternativeMethods: ['MuslimWorldLeague'],
+      defaultMadhab: 'Hanafi',
+      highLatitudeRule: 'MiddleOfTheNight'
+    }
+  }
+  if (TURKEY_HANAFI_COUNTRIES.has(countryCode)) {
+    return {
+      defaultMethod: 'Turkey',
+      alternativeMethods: ['MuslimWorldLeague'],
+      defaultMadhab: 'Hanafi',
+      highLatitudeRule: TWILIGHT_ANGLE_COUNTRIES.has(countryCode) ? 'TwilightAngle' : 'MiddleOfTheNight'
+    }
+  }
+  if (EGYPTIAN_REGION_COUNTRIES.has(countryCode)) {
+    return {
+      defaultMethod: 'Egyptian',
+      alternativeMethods: ['MuslimWorldLeague', 'UmmAlQura'],
+      defaultMadhab: 'Shafi',
+      highLatitudeRule: 'MiddleOfTheNight'
+    }
+  }
+  if (UMM_AL_QURA_REGION_COUNTRIES.has(countryCode)) {
+    return {
+      defaultMethod: 'UmmAlQura',
+      alternativeMethods: ['MuslimWorldLeague'],
+      defaultMadhab: 'Shafi',
+      highLatitudeRule: 'MiddleOfTheNight'
+    }
+  }
+  if (SINGAPORE_REGION_COUNTRIES.has(countryCode)) {
+    return {
+      defaultMethod: 'Singapore',
+      alternativeMethods: ['MuslimWorldLeague'],
+      defaultMadhab: 'Shafi',
+      highLatitudeRule: 'MiddleOfTheNight'
+    }
+  }
+  if (NORTH_AMERICA_REGION_COUNTRIES.has(countryCode)) {
+    return {
+      defaultMethod: 'NorthAmerica',
+      alternativeMethods: ['MoonsightingCommittee', 'MuslimWorldLeague'],
+      defaultMadhab: 'Shafi',
+      highLatitudeRule: 'MiddleOfTheNight'
+    }
+  }
+  return {
+    defaultMethod: 'MuslimWorldLeague',
+    alternativeMethods: ['MoonsightingCommittee', 'NorthAmerica'],
+    defaultMadhab: 'Shafi',
+    highLatitudeRule: TWILIGHT_ANGLE_COUNTRIES.has(countryCode) ? 'TwilightAngle' : 'MiddleOfTheNight'
+  }
+}
+
 const commonFallback = (countryCode: string, countryName: string): CountryPrayerConfig => ({
-  ...GLOBAL_FALLBACK_COUNTRY_CONFIG,
   countryCode,
   countryName,
+  ...regionalDefaults(countryCode),
   notes: 'Regional practices may differ. Use Auto as a starting point and compare with your local masjid.',
-  sourceType: 'fallback'
+  sourceType: 'regional-common'
 })
 
 const PRIMARY_COUNTRY_PRAYER_CONFIGS: CountryPrayerConfig[] = [
@@ -120,4 +189,29 @@ export function getCountryPrayerConfig(countryCode?: string | null): CountryPray
     ...GLOBAL_FALLBACK_COUNTRY_CONFIG,
     countryCode: countryCode.toUpperCase()
   }
+}
+
+export function detectCountryCode(preferredCountryCode?: string | null): string | null {
+  const preferred = normalizeKnownCountryCode(preferredCountryCode)
+  if (preferred) return preferred
+  if (typeof navigator === 'undefined') return null
+
+  for (const locale of navigator.languages ?? [navigator.language]) {
+    try {
+      const region = new Intl.Locale(locale).region
+      const known = normalizeKnownCountryCode(region)
+      if (known) return known
+    } catch {
+      const match = locale.match(/[-_]([A-Za-z]{2})$/)
+      const known = normalizeKnownCountryCode(match?.[1])
+      if (known) return known
+    }
+  }
+  return null
+}
+
+function normalizeKnownCountryCode(value?: string | null): string | null {
+  const normalized = value?.trim().toUpperCase()
+  if (!normalized) return null
+  return COUNTRY_PRAYER_CONFIGS.some((item) => item.countryCode === normalized) ? normalized : null
 }

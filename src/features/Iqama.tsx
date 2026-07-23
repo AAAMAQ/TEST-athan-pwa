@@ -238,11 +238,11 @@ export default function Iqama({ go }: Props) {
 
 function goBack() {
   if (go) {
-    go('AthanEngine')
+    go('More')
     return
   }
 
-  window.location.hash = '#AthanEngine'
+  window.location.hash = '#More'
 }
 
   function updateRule(prayer: IqamaPrayerName, nextRule: Parameters<typeof updateIqamaRule>[2]) {
@@ -627,7 +627,7 @@ function goBack() {
             onClick={goBack}
             className="rounded bg-gray-700 hover:bg-gray-600 px-4 py-3 font-semibold text-white"
           >
-            Back to Advanced Athan
+            Back to More
           </button>
         </div>
 
