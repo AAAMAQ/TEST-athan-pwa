@@ -18,6 +18,14 @@ export type LocationState = {
   error: string
 }
 
+export type LocationAddress = {
+  city?: string
+  region?: string
+  country?: string
+  countryCode?: string
+  label: string
+}
+
 export const LOCATION_CACHE_KEY = 'athan.location.cache.v1'
 
 let memoryState: LocationState = {
@@ -82,6 +90,28 @@ export function saveCachedLocation(location: AppLocation): void {
     localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(normalizeLocation(location)))
   } catch {
     // Ignore storage failures.
+  }
+}
+
+export async function reverseGeocodeCoordinates(latitude: number, longitude: number): Promise<LocationAddress> {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&zoom=10&addressdetails=1`
+  const response = await fetch(url, { headers: { Accept: 'application/json' } })
+  if (!response.ok) throw new Error('Unable to identify this location.')
+
+  const data = await response.json()
+  const address = data?.address ?? {}
+  const city = address.city || address.town || address.village || address.hamlet || address.municipality || address.county
+  const region = address.state || address.region
+  const country = address.country
+  const countryCode = typeof address.country_code === 'string' ? address.country_code.toUpperCase() : undefined
+  const parts = [city, region, country].filter(Boolean)
+
+  return {
+    city: typeof city === 'string' ? city : undefined,
+    region: typeof region === 'string' ? region : undefined,
+    country: typeof country === 'string' ? country : undefined,
+    countryCode,
+    label: parts.length > 0 ? parts.join(', ') : data?.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
   }
 }
 

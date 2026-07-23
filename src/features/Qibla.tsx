@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { refreshDeviceLocation } from '../lib/locationStore'
+import { refreshDeviceLocation, reverseGeocodeCoordinates, saveCachedLocation } from '../lib/locationStore'
 
 declare global {
   interface DeviceOrientationEvent {
@@ -80,19 +80,6 @@ function formatCachedLocationLabel(location: { latitude: number; longitude: numb
   return place || formatCoordsLabel(location.latitude, location.longitude)
 }
 
-async function reverseGeocodeLocation(latitude: number, longitude: number) {
-  const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&zoom=10&addressdetails=1`, {
-    headers: { Accept: 'application/json' }
-  })
-  if (!response.ok) throw new Error('Unable to reverse geocode location')
-  const data = await response.json()
-  const address = data?.address ?? {}
-  const city = address.city || address.town || address.village || address.hamlet || address.municipality || address.county
-  const region = address.state || address.region
-  const country = address.country
-  return [city, region, country].filter(Boolean).join(', ') || data?.display_name || ''
-}
-
 export default function Qibla({ go }: Props) {
   const [mode, setMode] = useState<QiblaMode>(() => loadMode())
   const [haptics, setHaptics] = useState(() => loadHaptics())
@@ -139,7 +126,7 @@ export default function Qibla({ go }: Props) {
           const nextBearing = bearingToKaaba(latitude, longitude)
           setBearing(nextBearing)
           setDistanceKm(distanceToKaabaKm(latitude, longitude))
-          setLocationLabel(label || formatCoordsLabel(latitude, longitude))
+          if (label) setLocationLabel(label)
           setLocationStatus('granted')
           setStatus('Location ready. Waiting for compass heading.')
         }
@@ -150,9 +137,17 @@ export default function Qibla({ go }: Props) {
             locState.location.longitude,
             formatCachedLocationLabel(locState.location)
           )
-          reverseGeocodeLocation(locState.location.latitude, locState.location.longitude)
-            .then((label) => {
-              if (!cancelled.current && label) setLocationLabel(label)
+          reverseGeocodeCoordinates(locState.location.latitude, locState.location.longitude)
+            .then((resolved) => {
+              if (!cancelled.current) {
+                setLocationLabel(resolved.label)
+                saveCachedLocation({
+                  ...locState.location!,
+                  city: resolved.city,
+                  country: resolved.country,
+                  countryCode: resolved.countryCode
+                })
+              }
             })
             .catch(() => {
               // Coordinates are already visible as a fallback.
@@ -390,7 +385,7 @@ function SimpleQibla({
             className="absolute left-1/2 top-1/2 h-[224px] w-[224px] -translate-x-1/2 -translate-y-1/2"
             style={{ transform: `translate(-50%, -50%) rotate(${markerRotation}deg)` }}
           >
-            <div className="absolute left-1/2 top-0 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-lg shadow-lg shadow-gray-950/30">🕋</div>
+            <div className="absolute left-1/2 top-2 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-amber-300 bg-amber-50 text-lg shadow-lg shadow-gray-950/40">🕋</div>
           </div>
 
           <div className="absolute left-1/2 top-1/2 h-32 w-14 -translate-x-1/2 -translate-y-[46%]">
@@ -481,7 +476,7 @@ function AdvancedQibla({
 
           <div className="mx-auto w-56 h-56 rounded-full border border-gray-600 relative select-none">
             <div className="absolute inset-2 rounded-full border border-gray-700" />
-            <div className="absolute left-1/2 top-1/2 z-10 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-amber-200/80 bg-gray-900 text-base shadow">🕋</div>
+            <div className="absolute left-1/2 -top-3 -translate-x-1/2 text-xs font-semibold text-gray-400">N</div>
             <div
               className="absolute left-1/2 top-1/2 w-1 h-24 bg-teal-400 origin-bottom rounded"
               style={{ transform: `translate(-50%,-100%) rotate(${needleRotation}deg)` }}

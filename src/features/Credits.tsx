@@ -108,26 +108,24 @@ export default function Credits({ go, backTarget }: Props) {
         </p>
       </header>
 
-      <section className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-        <div className="grid gap-3 text-sm sm:grid-cols-2">
-          <div>
-            <p className="text-xs text-gray-400">Current version</p>
-            <p className="font-semibold text-teal-300">
-              v{ATHAN_RELEASE.version.replace(/^v/, '')}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400">Release date</p>
-            <p className="font-semibold text-gray-100">{formatDevNoteDate(ATHAN_RELEASE.updatedAt)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400">Developer</p>
-            <p className="font-semibold text-gray-100">BiG MAQ Studio</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400">Privacy</p>
-            <p className="font-semibold text-gray-100">Local-first and ad-free</p>
-          </div>
+      <section className="overflow-hidden rounded-lg border border-teal-900/80 bg-gray-800">
+        <dl className="divide-y divide-gray-700 text-sm">
+          <CreditRow label="App" value="Athan PWA App" />
+          <CreditRow label="Version" value={`v${ATHAN_RELEASE.version.replace(/^v/, '')}`} accent />
+          <CreditRow label="Date of Current Version" value={formatDevNoteDate(ATHAN_RELEASE.updatedAt)} />
+          <CreditRow
+            label="Latest Update"
+            value="v3.1.1 adds a City Mode timetable option for Home, reliable built-in Hijri dates, refreshed Prayer Times screens, coordinate-based country detection, regional Deep Search defaults, and improved Quran offline reading."
+          />
+          <CreditRow label="Company" value="BiG MAQ Studio" />
+        </dl>
+        <div className="border-t border-gray-700 p-4">
+          <p className="text-xs font-semibold uppercase text-gray-400">Copyright</p>
+          <p className="mt-2 text-sm leading-6 text-gray-300">
+            The content of this software is copyrighted © 2026 by BiG MAQ Studio. All rights reserved.
+            The software code and accompanying documentation are protected by copyright law, prohibiting
+            unauthorized reproduction or distribution without the explicit permission of the copyright owner.
+          </p>
         </div>
       </section>
 
@@ -249,6 +247,15 @@ export default function Credits({ go, backTarget }: Props) {
         <p>© {new Date().getFullYear()} BiG MAQ Studio. All rights reserved.</p>
         <p>Athan PWA keeps personal app data on your device.</p>
       </footer>
+    </div>
+  )
+}
+
+function CreditRow({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="grid gap-1 p-4 sm:grid-cols-[11rem_1fr] sm:gap-4">
+      <dt className="text-xs font-semibold uppercase text-gray-400">{label}</dt>
+      <dd className={`leading-6 ${accent ? 'font-semibold text-teal-300' : 'text-gray-100'}`}>{value}</dd>
     </div>
   )
 }

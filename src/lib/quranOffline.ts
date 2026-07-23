@@ -1,4 +1,4 @@
-import { fetchSurah, fetchSurahs } from './quran'
+import { fetchSurahs, QURAN_API, QURAN_OFFLINE_CACHE } from './quran'
 
 export type QuranOfflineStatus = {
   available: boolean
@@ -17,7 +17,7 @@ export type QuranDownloadProgress = {
 }
 
 export const QURAN_OFFLINE_META_KEY = 'athan.quran.offline.meta.v1'
-const QURAN_OFFLINE_CACHE = 'athan-quran-offline-v1'
+const LEGACY_QURAN_OFFLINE_CACHE = 'athan-quran-offline-v1'
 const DEFAULT_EDITION = 'en.asad'
 
 export function loadQuranOfflineStatus(): QuranOfflineStatus {
@@ -35,33 +35,54 @@ export async function downloadQuranOffline(
   edition = DEFAULT_EDITION
 ): Promise<QuranOfflineStatus> {
   const surahs = await fetchSurahs()
+  if (!('caches' in window)) throw new Error('Cache Storage is unavailable')
+  const cache = await caches.open(QURAN_OFFLINE_CACHE)
   let downloaded = 0
-  const cache = 'caches' in window ? await caches.open(QURAN_OFFLINE_CACHE) : null
+  let failed = 0
 
   for (const surah of surahs) {
-    onProgress?.({ current: downloaded + 1, total: surahs.length, label: `Downloading Surah ${surah.number}` })
-    await fetchSurah(surah.number, edition)
-    if (cache) {
-      await cache.add(`https://api.alquran.cloud/v1/surah/${surah.number}/ar.uthmani`).catch(() => undefined)
-      await cache.add(`https://api.alquran.cloud/v1/surah/${surah.number}/${edition}`).catch(() => undefined)
+    onProgress?.({ current: downloaded + failed + 1, total: surahs.length, label: `Downloading Surah ${surah.number}` })
+    const urls = [
+      `${QURAN_API}/surah/${surah.number}/ar.uthmani`,
+      `${QURAN_API}/surah/${surah.number}/${edition}`
+    ]
+    try {
+      await Promise.all(urls.map((url) => cacheUrlWithRetry(cache, url)))
+      downloaded++
+    } catch {
+      failed++
     }
-    downloaded++
+    saveStatus({
+      available: downloaded > 0,
+      complete: false,
+      downloadedSurahs: downloaded,
+      totalSurahs: surahs.length,
+      updatedAt: new Date().toISOString(),
+      edition,
+      error: failed ? `${failed} Surah${failed === 1 ? '' : 's'} still need to be downloaded.` : undefined
+    })
   }
 
   const status: QuranOfflineStatus = {
     available: downloaded > 0,
-    complete: downloaded === surahs.length,
+    complete: failed === 0 && downloaded === surahs.length,
     downloadedSurahs: downloaded,
     totalSurahs: surahs.length,
     updatedAt: new Date().toISOString(),
-    edition
+    edition,
+    error: failed ? `${failed} Surah${failed === 1 ? '' : 's'} could not be downloaded. Tap Download again to retry only missing files.` : undefined
   }
   saveStatus(status)
   return status
 }
 
 export async function removeQuranOfflineData(): Promise<QuranOfflineStatus> {
-  if ('caches' in window) await caches.delete(QURAN_OFFLINE_CACHE)
+  if ('caches' in window) {
+    await Promise.all([
+      caches.delete(QURAN_OFFLINE_CACHE),
+      caches.delete(LEGACY_QURAN_OFFLINE_CACHE)
+    ])
+  }
   try {
     Object.keys(localStorage)
       .filter((key) => key.startsWith('quran_surah_v1_') || key === 'quran_surahs_v1')
@@ -72,6 +93,29 @@ export async function removeQuranOfflineData(): Promise<QuranOfflineStatus> {
   const status = emptyStatus()
   saveStatus(status)
   return status
+}
+
+async function cacheUrlWithRetry(cache: Cache, url: string) {
+  const existing = await cache.match(url)
+  if (existing?.ok) return
+
+  let lastError: unknown
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(url, { cache: 'no-store' })
+      if (!response.ok) throw new Error(`Quran request failed with ${response.status}`)
+      await cache.put(url, response)
+      return
+    } catch (error) {
+      lastError = error
+      if (attempt < 2) await wait(400 * (attempt + 1))
+    }
+  }
+  throw lastError
+}
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 }
 
 function saveStatus(status: QuranOfflineStatus) {

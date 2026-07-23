@@ -152,8 +152,8 @@ export default function NeedHelp({ go, backTarget = 'Credits' }: Props) {
             live sample before reading.
           </p>
           <p>
-            <span className="font-semibold text-teal-300">Saved Cities / Travel Mode:</span> Open More, then Saved
-            Cities. You can search or manually add a city, choose Auto country-based settings, override methods,
+            <span className="font-semibold text-teal-300">City Mode:</span> Open More, then City Mode.
+            You can search or manually add a city, choose Auto country-based settings, override methods,
             add personal correction offsets, preview prayer times, export ICS, export CSV, or share a plain-text
             timetable. Auto settings are a starting point; always compare with a local masjid when needed.
           </p>

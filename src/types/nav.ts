@@ -10,6 +10,7 @@ export type Screen =
   | 'Settings'
   | 'Qibla'
   | 'Quran'
+  | 'QuranSettings'
   | 'Credits'
   | 'Privacy'
   | 'Vision'

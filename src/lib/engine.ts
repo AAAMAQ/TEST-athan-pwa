@@ -42,6 +42,7 @@ export type EngineLocation = {
   timezone?: string
   offsetLabel?: string
   offsetMinutes?: number
+  countryCode?: string
 }
 
 type CachedEngineLocation = EngineLocation & {
@@ -104,7 +105,7 @@ export async function resolveEngineLocation(query: string): Promise<EngineLocati
     : makeLocationCacheKey(trimmed)
 
   const cached = getCachedEngineLocation(cacheKey)
-  if (cached?.timezone) return cached
+  if (cached?.timezone && cached.countryCode) return cached
 
   const location = coordinates
     ? await reverseGeocodeEngineLocation(coordinates.latitude, coordinates.longitude)
@@ -142,7 +143,8 @@ export async function geocodeEngineLocation(query: string): Promise<EngineLocati
   return {
     label,
     latitude,
-    longitude
+    longitude,
+    countryCode: typeof address.country_code === 'string' ? address.country_code.toUpperCase() : undefined
   }
 }
 
@@ -166,7 +168,12 @@ export async function reverseGeocodeEngineLocation(latitude: number, longitude: 
     const country = address.country
     const label = [city, region, country].filter(Boolean).join(', ') || data?.display_name || fallbackLabel
 
-    return { label, latitude, longitude }
+    return {
+      label,
+      latitude,
+      longitude,
+      countryCode: typeof address.country_code === 'string' ? address.country_code.toUpperCase() : undefined
+    }
   } catch {
     return { label: fallbackLabel, latitude, longitude }
   }

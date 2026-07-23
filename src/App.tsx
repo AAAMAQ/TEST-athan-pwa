@@ -1,8 +1,9 @@
 // src/App.tsx
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PrayerTimes from './features/PrayerTimes'
 import Qibla from './features/Qibla'
 import Quran from './features/Quran'
+import QuranSettings from './features/QuranSettings'
 import Settings from './features/Settings'
 import Home from './features/Home'
 import Credits from './features/Credits'
@@ -28,6 +29,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('Home')
   const [history, setHistory] = useState<Screen[]>([])
   const [language, setLanguage] = useState<AppLanguage>(() => loadLanguage())
+  const mainRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const onLanguageChange = () => setLanguage(loadLanguage())
@@ -39,6 +41,10 @@ export default function App() {
     document.documentElement.lang = language
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr'
   }, [language])
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 })
+  }, [screen])
 
   const isPrimary = (s: Screen): s is Tab => (primaryTabs as readonly string[]).includes(s)
 
@@ -79,6 +85,7 @@ export default function App() {
     Settings: t('settings', language),
     Qibla: t('qibla', language),
     Quran: t('quran', language),
+    QuranSettings: 'Quran Settings',
     Credits: t('credits', language),
     Privacy: t('privacy', language),
     Vision: t('vision', language),
@@ -120,12 +127,13 @@ export default function App() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto p-4">
+      <main ref={mainRef} className="flex-1 overflow-auto p-4">
         {screen === 'Home' && <Home go={go} />}
         {screen === 'Prayer' && <PrayerTimes />}
         {screen === 'Settings' && <Settings go={go} />}
         {screen === 'Qibla' && <Qibla go={go} />}
-        {screen === 'Quran' && <Quran />}
+        {screen === 'Quran' && <Quran go={go} />}
+        {screen === 'QuranSettings' && <QuranSettings />}
         {screen === 'Credits' && <Credits go={go} />}
         {screen === 'Privacy' && <Privacy />}
         {screen === 'Vision' && <Vision />}

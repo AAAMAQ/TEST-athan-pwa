@@ -1,23 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchSurah, fetchSurahs } from '../lib/quran'
-import {
-  clearQuranProgress,
-  loadQuranProgress,
-  markAyahRead,
-  toggleFavoriteSurah,
-  type QuranProgress
-} from '../lib/quranProgress'
-import {
-  downloadQuranOffline,
-  loadQuranOfflineStatus,
-  removeQuranOfflineData,
-  type QuranOfflineStatus
-} from '../lib/quranOffline'
-import {
-  isQuranTranslation,
-  QURAN_TRANSLATIONS,
-  type QuranTranslation
-} from '../lib/quranProviders'
+import { loadQuranProgress, markAyahRead, toggleFavoriteSurah, type QuranProgress } from '../lib/quranProgress'
+import { isQuranTranslation, type QuranTranslation } from '../lib/quranProviders'
 
 type SurahItem = {
   number: number
@@ -29,12 +13,14 @@ type SurahItem = {
 
 type Ayah = { number: number; text: string }
 type ViewMode = 'ar' | 'ar-en'
-type HubPanel = 'surahs' | 'juz' | 'bookmarks' | 'search' | 'settings' | null
+type HubPanel = 'surahs' | 'juz' | 'bookmarks' | 'search' | 'daily' | null
+type Props = { go?: (screen: string) => void }
 
 const BOOKMARKS_KEY = 'quranBookmarks'
 const FONT_SIZE_KEY = 'quranFontPct'
 const VIEW_MODE_KEY = 'quranViewMode'
 const TRANSLATION_KEY = 'athan.quran.translation.v1'
+const READ_AYAHS_KEY = 'athan.quran.readAyahs.v1'
 
 const JUZ_STARTS = [
   [1, 1], [2, 142], [2, 253], [3, 93], [4, 24], [4, 148], [5, 82], [6, 111],
@@ -63,6 +49,15 @@ function saveBookmarks(bookmarks: Set<string>) {
   }
 }
 
+function loadReadAyahs(): Set<string> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(READ_AYAHS_KEY) || '[]')
+    return new Set(Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [])
+  } catch {
+    return new Set()
+  }
+}
+
 function loadTranslation(): QuranTranslation['id'] {
   const stored = localStorage.getItem(TRANSLATION_KEY) || 'en.asad'
   return isQuranTranslation(stored) ? stored : 'en.asad'
@@ -83,7 +78,7 @@ function percentFor(lastAyah: number, totalAyahs?: number) {
   return clamp(Math.round((lastAyah / totalAyahs) * 100), 0, 100)
 }
 
-export default function Quran() {
+export default function Quran({ go }: Props) {
   const [surahs, setSurahs] = useState<SurahItem[]>([])
   const [selected, setSelected] = useState<number>(1)
   const [arabic, setArabic] = useState<Ayah[]>([])
@@ -91,14 +86,15 @@ export default function Quran() {
   const [bismillah, setBismillah] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [edition, setEdition] = useState<QuranTranslation['id']>(loadTranslation)
-  const [mode, setMode] = useState<ViewMode>(() => (
+  const [edition] = useState<QuranTranslation['id']>(loadTranslation)
+  const [mode] = useState<ViewMode>(() => (
     localStorage.getItem(VIEW_MODE_KEY) === 'ar' ? 'ar' : 'ar-en'
   ))
   const [progress, setProgress] = useState<QuranProgress>(loadQuranProgress)
   const [bookmarks, setBookmarks] = useState<Set<string>>(loadBookmarks)
+  const [readAyahs, setReadAyahs] = useState<Set<string>>(loadReadAyahs)
   const [showOnlyBookmarks, setShowOnlyBookmarks] = useState(false)
-  const [fontPct, setFontPct] = useState(() => {
+  const [fontPct] = useState(() => {
     const stored = Number(localStorage.getItem(FONT_SIZE_KEY))
     return Number.isFinite(stored) && stored > 0 ? clamp(stored, 80, 180) : 100
   })
@@ -106,8 +102,7 @@ export default function Quran() {
   const [readerOpen, setReaderOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
-  const [offlineStatus, setOfflineStatus] = useState<QuranOfflineStatus>(loadQuranOfflineStatus)
-  const [offlineMessage, setOfflineMessage] = useState('')
+  const [dailyAyah, setDailyAyah] = useState<{ surah: SurahItem; arabic: string; english: string; ayah: number } | null>(null)
   const [pendingAyah, setPendingAyah] = useState<number | null>(null)
   const readerTopRef = useRef<HTMLDivElement>(null)
 
@@ -136,16 +131,22 @@ export default function Quran() {
   }, [selected, edition])
 
   useEffect(() => {
-    localStorage.setItem(VIEW_MODE_KEY, mode)
-  }, [mode])
-
-  useEffect(() => {
-    localStorage.setItem(FONT_SIZE_KEY, String(fontPct))
-  }, [fontPct])
-
-  useEffect(() => {
-    localStorage.setItem(TRANSLATION_KEY, edition)
-  }, [edition])
+    if (!surahs.length) return
+    const dateKey = new Date().toLocaleDateString('en-CA')
+    const seed = [...dateKey].reduce((total, character) => ((total * 31) + character.charCodeAt(0)) >>> 0, 17)
+    const surah = surahs[seed % surahs.length]
+    const ayah = ((seed >>> 8) % surah.numberOfAyahs) + 1
+    fetchSurah(surah.number, edition)
+      .then((result) => {
+        setDailyAyah({
+          surah,
+          ayah,
+          arabic: result.arabic.find((item) => item.number === ayah)?.text ?? '',
+          english: result.english.find((item) => item.number === ayah)?.text ?? ''
+        })
+      })
+      .catch(() => setDailyAyah(null))
+  }, [edition, surahs])
 
   useEffect(() => {
     if (!readerOpen || loading || pendingAyah === null) return
@@ -225,6 +226,13 @@ export default function Quran() {
     if (!surah) return
     const next = markAyahRead(selected, ayah, surah.englishName, surah.numberOfAyahs)
     setProgress(next)
+    const nextReadAyahs = new Set(readAyahs).add(bookmarkKey(selected, ayah))
+    setReadAyahs(nextReadAyahs)
+    try {
+      localStorage.setItem(READ_AYAHS_KEY, JSON.stringify([...nextReadAyahs]))
+    } catch {
+      // Keep the current reading session usable if browser storage is full.
+    }
     setStatusMessage(`Saved Surah ${surah.englishName}, Ayah ${ayah} as last read.`)
   }
 
@@ -257,34 +265,6 @@ export default function Quran() {
     setStatusMessage(next.favoriteSurahs.includes(selected) ? 'Surah saved.' : 'Surah removed from saved Surahs.')
   }
 
-  function clearProgress() {
-    if (!window.confirm('Clear Quran reading progress on this device? Bookmarks will stay.')) return
-    setProgress(clearQuranProgress())
-    setStatusMessage('Quran reading progress was cleared.')
-  }
-
-  async function downloadOffline() {
-    try {
-      setOfflineMessage('Preparing offline Quran…')
-      const next = await downloadQuranOffline(({ current, total }) => {
-        setOfflineMessage(`Downloading Surah ${current} of ${total}…`)
-      }, edition)
-      setOfflineStatus(next)
-      setOfflineMessage('Quran is ready for offline reading.')
-    } catch {
-      setOfflineStatus(loadQuranOfflineStatus())
-      setOfflineMessage('Download paused. Reconnect and try again.')
-    }
-  }
-
-  async function removeOffline() {
-    if (!window.confirm('Remove downloaded Quran text? Reading progress and bookmarks will stay.')) return
-    const next = await removeQuranOfflineData()
-    setOfflineStatus(next)
-    setOfflineMessage('Offline Quran text removed. Your progress and bookmarks were kept.')
-  }
-
-  const currentTranslation = QURAN_TRANSLATIONS.find((item) => item.id === edition) ?? QURAN_TRANSLATIONS[0]
   const visibleArabic = showOnlyBookmarks
     ? arabic.filter((ayah) => bookmarks.has(bookmarkKey(selected, ayah.number)))
     : arabic
@@ -303,12 +283,8 @@ export default function Quran() {
             <h2 className="truncate font-semibold text-white">{selectedSurah?.englishName ?? `Surah ${selected}`}</h2>
             <p className="text-xs text-gray-400">{selectedSurah?.name}</p>
           </div>
-          <button type="button" onClick={() => setPanel('settings')} className="rounded-md bg-gray-800 px-3 py-2 text-sm text-teal-300 hover:bg-gray-700">
-            Aa
-          </button>
+          <span className="w-16" aria-hidden="true" />
         </header>
-
-        {panel === 'settings' && renderSettingsPanel()}
 
         <section className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 pb-3">
           <select
@@ -349,6 +325,7 @@ export default function Quran() {
             {visibleArabic.map((ayah) => {
               const translation = visibleEnglish.find((item) => item.number === ayah.number)
               const bookmarked = bookmarks.has(bookmarkKey(selected, ayah.number))
+              const read = readAyahs.has(bookmarkKey(selected, ayah.number))
               return (
                 <article key={ayah.number} id={`ayah-${selected}-${ayah.number}`} className="border-b border-gray-800 py-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
@@ -357,8 +334,8 @@ export default function Quran() {
                       <button type="button" onClick={() => toggleBookmark(selected, ayah.number)} className={`h-9 w-9 rounded-md bg-gray-800 text-lg ${bookmarked ? 'text-yellow-300' : 'text-gray-400'}`} aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark Ayah'}>
                         {bookmarked ? '★' : '☆'}
                       </button>
-                      <button type="button" onClick={() => recordRead(ayah.number)} className="rounded-md bg-teal-700/40 px-3 py-2 text-xs font-semibold text-teal-100">
-                        Mark read
+                      <button type="button" onClick={() => recordRead(ayah.number)} className={`rounded-md px-3 py-2 text-xs font-semibold transition ${read ? 'bg-teal-400 text-gray-950' : 'bg-teal-950/70 text-teal-100'}`}>
+                        {read ? 'Read ✓' : 'Mark read'}
                       </button>
                     </div>
                   </div>
@@ -380,7 +357,7 @@ export default function Quran() {
           <p className="text-xs font-medium uppercase text-teal-400">Read at your pace</p>
           <h2 className="text-2xl font-bold text-white">Quran</h2>
         </div>
-        <button type="button" onClick={() => setPanel(panel === 'settings' ? null : 'settings')} className="rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 hover:border-teal-600">
+        <button type="button" onClick={() => go?.('QuranSettings')} className="rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 hover:border-teal-600">
           Quran Settings
         </button>
       </header>
@@ -401,13 +378,14 @@ export default function Quran() {
 
       <section>
         <h3 className="mb-3 font-semibold text-white">Quick Access</h3>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {[
             { id: 'surahs' as const, icon: '114', label: 'Surah', detail: 'Browse all' },
             { id: 'juz' as const, icon: '30', label: 'Juz', detail: '30 parts' },
             { id: 'bookmarks' as const, icon: '☆', label: 'Surah Bookmarks', detail: `${bookmarks.size} saved` },
             { id: null, icon: '↗', label: 'Last Read Ayah', detail: progress.lastReadAyah ? `Ayah ${progress.lastReadAyah}` : 'Not set' },
-            { id: 'search' as const, icon: '⌕', label: 'Search', detail: 'Surah or Ayah' }
+            { id: 'search' as const, icon: '⌕', label: 'Search', detail: 'Surah or Ayah' },
+            { id: 'daily' as const, icon: '✦', label: 'Ayah of the Day', detail: 'A daily reflection' }
           ].map((item) => (
             <button
               key={item.label}
@@ -502,7 +480,23 @@ export default function Quran() {
         </section>
       )}
 
-      {panel === 'settings' && renderSettingsPanel()}
+      {panel === 'daily' && (
+        <section className="rounded-md border border-teal-800/60 bg-gray-800/60 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold text-white">Ayah of the Day</h3>
+            {dailyAyah && <span className="text-xs text-teal-300">{dailyAyah.surah.englishName} {dailyAyah.ayah}</span>}
+          </div>
+          {dailyAyah ? (
+            <button type="button" onClick={() => openReader(dailyAyah.surah.number, dailyAyah.ayah)} className="mt-4 block w-full text-left">
+              <p dir="rtl" className="text-right text-2xl leading-loose text-gray-100">{dailyAyah.arabic}</p>
+              <p className="mt-4 text-sm leading-7 text-gray-300">{dailyAyah.english}</p>
+              <span className="mt-4 block text-xs font-semibold text-teal-300">Open in Quran →</span>
+            </button>
+          ) : (
+            <p className="mt-3 text-sm text-gray-400">Connect once to prepare today’s Ayah.</p>
+          )}
+        </section>
+      )}
 
       <section>
         <h3 className="mb-3 font-semibold text-white">Continue Reading</h3>
@@ -554,71 +548,4 @@ export default function Quran() {
     </div>
   )
 
-  function renderSettingsPanel() {
-    const sample = english[0]
-    return (
-      <section className="space-y-5 rounded-md border border-gray-700 bg-gray-800/70 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-white">Quran Settings</h3>
-            <p className="text-xs text-gray-400">Reading controls stay tucked away here.</p>
-          </div>
-          <button type="button" onClick={() => setPanel(null)} className="h-9 w-9 rounded-md bg-gray-700 text-gray-300" aria-label="Close Quran settings">×</button>
-        </div>
-
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <label className="text-sm font-medium text-gray-200">Font size</label>
-            <span className="text-xs text-teal-300">{fontPct}%</span>
-          </div>
-          <input type="range" min="80" max="180" step="10" value={fontPct} onChange={(event) => setFontPct(Number(event.target.value))} className="w-full accent-teal-500" />
-        </div>
-
-        <div>
-          <p className="mb-2 text-sm font-medium text-gray-200">Reading view</p>
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setMode('ar-en')} className={`rounded-md px-3 py-2 text-sm ${mode === 'ar-en' ? 'bg-teal-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Arabic + English</button>
-            <button type="button" onClick={() => setMode('ar')} className={`rounded-md px-3 py-2 text-sm ${mode === 'ar' ? 'bg-teal-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Arabic only</button>
-          </div>
-        </div>
-
-        <div>
-          <p className="mb-2 text-sm font-medium text-gray-200">Translation / Tafsir</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {QURAN_TRANSLATIONS.map((translation) => (
-              <button key={translation.id} type="button" onClick={() => setEdition(translation.id)} className={`rounded-md border p-3 text-left ${edition === translation.id ? 'border-teal-500 bg-teal-950/40' : 'border-gray-700 bg-gray-900/40'}`}>
-                <span className="block text-sm font-semibold text-white">{translation.label}</span>
-                <span className="mt-1 block text-xs leading-5 text-gray-400">{translation.description}</span>
-              </button>
-            ))}
-          </div>
-          <div className="mt-3 rounded-md border-l-2 border-teal-500 bg-gray-900/70 p-3">
-            <p className="mb-1 text-xs font-semibold text-teal-300">{currentTranslation.label} preview</p>
-            <p className="text-sm leading-6 text-gray-300">{loading ? 'Loading preview…' : sample?.text ?? 'Open a Surah once to load a sample verse.'}</p>
-          </div>
-        </div>
-
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-200">Offline Quran</p>
-            <span className="text-xs text-gray-400">{offlineStatus.complete ? 'Downloaded' : `${offlineStatus.downloadedSurahs}/114`}</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={downloadOffline} className="rounded-md bg-teal-600 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-500">Download All Surahs</button>
-            {offlineStatus.available && <button type="button" onClick={removeOffline} className="rounded-md bg-gray-700 px-3 py-2 text-sm text-gray-200 hover:bg-gray-600">Remove Download</button>}
-          </div>
-          {offlineMessage && <p role="status" className="mt-2 text-xs text-teal-300">{offlineMessage}</p>}
-        </div>
-
-        <div className="border-t border-gray-700 pt-4">
-          <p className="mb-2 text-sm font-medium text-gray-200">Reading progress</p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={clearProgress} className="rounded-md bg-gray-700 px-3 py-2 text-sm text-gray-200 hover:bg-gray-600">Reset Progress</button>
-            <button type="button" onClick={clearBookmarks} className="rounded-md bg-gray-700 px-3 py-2 text-sm text-gray-200 hover:bg-red-900/50">Clear Bookmarks</button>
-          </div>
-          {statusMessage && <p role="status" className="mt-2 text-xs text-teal-300">{statusMessage}</p>}
-        </div>
-      </section>
-    )
-  }
 }

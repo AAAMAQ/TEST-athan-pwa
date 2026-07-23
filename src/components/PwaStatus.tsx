@@ -37,6 +37,12 @@ export default function PwaStatus({ language = 'en' }: Props) {
     }
   }, [language])
 
+  useEffect(() => {
+    if (!message) return
+    const timeout = window.setTimeout(() => setMessage(''), 4500)
+    return () => window.clearTimeout(timeout)
+  }, [message])
+
   async function installApp() {
     try {
       const result = await requestPwaInstall()

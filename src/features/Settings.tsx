@@ -7,7 +7,12 @@ import {
 } from '../data/countryPrayerMethods'
 import { buildIcsForDates, downloadICS } from '../lib/ics'
 import { LANGUAGE_LABELS, loadLanguage, saveLanguage, t, type AppLanguage } from '../lib/i18n'
-import { loadCachedLocation, refreshDeviceLocation } from '../lib/locationStore'
+import {
+  loadCachedLocation,
+  refreshDeviceLocation,
+  reverseGeocodeCoordinates,
+  saveCachedLocation
+} from '../lib/locationStore'
 import {
   computePrayerTimes,
   loadSettings,
@@ -17,6 +22,11 @@ import {
   type MethodKey,
   type PrayerSettings
 } from '../lib/prayer'
+import {
+  loadSavedCities,
+  loadTravelDestinationId,
+  setTravelDestinationId
+} from '../lib/savedCities'
 
 const METHODS: MethodKey[] = [
   'MuslimWorldLeague',
@@ -90,7 +100,14 @@ function loadInitialPrayerState(): InitialPrayerState {
       ? 'manual'
       : 'auto'
   const cachedCountry = loadCachedLocation()?.countryCode
-  const countryCode = detectCountryCode(cachedCountry || readStorage(LS_AUTO_COUNTRY)) || ''
+  const storedCountry = readStorage(LS_AUTO_COUNTRY)
+  const countryCode = (
+    cachedCountry
+      ? detectCountryCode(cachedCountry)
+      : storedCountry
+        ? detectCountryCode(storedCountry)
+        : null
+  ) || ''
 
   return {
     calculationMode,
@@ -131,6 +148,8 @@ export default function Settings({ go }: Props) {
   const [calculationMode, setCalculationMode] = useState<CalculationMode>(initial.calculationMode)
   const [countryCode, setCountryCode] = useState(initial.countryCode)
   const [language, setLanguage] = useState<AppLanguage>(() => loadLanguage())
+  const [savedCities] = useState(loadSavedCities)
+  const [homeCityId, setHomeCityId] = useState(loadTravelDestinationId)
   const [offsetMin, setOffsetMin] = useState(() => {
     const raw = readStorage(LS_OFFSET) ?? readStorage('reminderMinutesBefore') ?? '20'
     const value = Number.parseInt(raw, 10)
@@ -156,6 +175,30 @@ export default function Settings({ go }: Props) {
   useEffect(() => {
     writeStorage(LS_ISHA_FIXED, ishaTime)
   }, [ishaTime])
+
+  useEffect(() => {
+    if (!message) return
+    const timeout = window.setTimeout(() => setMessage(''), 4500)
+    return () => window.clearTimeout(timeout)
+  }, [message])
+
+  useEffect(() => {
+    if (calculationMode !== 'auto') return
+    let cancelled = false
+
+    resolveCurrentDeviceCountry()
+      .then((result) => {
+        if (!result || cancelled) return
+        setCountryCode(result.countryCode)
+        writeStorage(LS_AUTO_COUNTRY, result.countryCode)
+        saveSettings(settingsForCountry(result.countryCode))
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
+  }, [calculationMode])
 
   function updateManualSetting<K extends keyof PrayerSettings>(key: K, value: PrayerSettings[K]) {
     const next = { ...manualSettings, [key]: value }
@@ -185,25 +228,39 @@ export default function Settings({ go }: Props) {
   }
 
   async function useCurrentLocationCountry() {
-    const cachedCountryCode = loadCachedLocation()?.countryCode
-    const state = await refreshDeviceLocation()
-    if (!state.location) {
+    setMessage(t('identifyingCountry', language))
+    let result: Awaited<ReturnType<typeof resolveCurrentDeviceCountry>>
+    try {
+      result = await resolveCurrentDeviceCountry()
+    } catch {
+      setMessage(t('countryLookupUnavailable', language))
+      return
+    }
+    if (!result) {
       setMessage(t('locationPermissionRequired', language))
       return
     }
-    const locationCountryCode = state.location.countryCode || cachedCountryCode
-    const detected = detectCountryCode(locationCountryCode)
-    if (!locationCountryCode) {
-      setMessage(t('locationCountryUnavailable', language))
+
+    if (!result.countryCode) {
+      setMessage(t('countryLookupUnavailable', language))
       return
     }
-    if (detected) changeAutoCountry(detected)
+
+    changeAutoCountry(result.countryCode)
+    const config = getCountryPrayerConfig(result.countryCode)
+    setMessage(`${t('countryDetected', language)}: ${countryLabel(result.countryCode, config.countryName, language)}`)
   }
 
   function updateLanguage(value: AppLanguage) {
     setLanguage(value)
     saveLanguage(value)
     setMessage(t('languageSaved', value))
+  }
+
+  function updateHomePrayerSource(cityId: string) {
+    setHomeCityId(cityId)
+    setTravelDestinationId(cityId)
+    setMessage(t('homePrayerSourceSaved', language))
   }
 
   async function exportIcs(days: number, label: string) {
@@ -284,6 +341,41 @@ export default function Settings({ go }: Props) {
             <option key={key} value={key}>{LANGUAGE_LABELS[key]}</option>
           ))}
         </select>
+      </section>
+
+      <section className={sectionClass}>
+        <div>
+          <h2 className="font-semibold text-white">{t('homePrayerSource', language)}</h2>
+          <p className="mt-1 text-xs leading-5 text-gray-400">{t('homePrayerSourceHelp', language)}</p>
+        </div>
+        <label className="mt-4 block text-sm font-medium text-gray-300" htmlFor="home-prayer-source">
+          {t('homePrayerSource', language)}
+        </label>
+        <select
+          id="home-prayer-source"
+          className={selectClass}
+          value={homeCityId}
+          onChange={(event) => updateHomePrayerSource(event.target.value)}
+        >
+          <option value="">{t('currentDeviceLocation', language)}</option>
+          {savedCities.map((city) => (
+            <option key={city.id} value={city.id}>
+              {city.name || city.city || 'Saved city'}{city.country ? `, ${city.country}` : ''}
+            </option>
+          ))}
+        </select>
+        {savedCities.length === 0 && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-gray-700 bg-gray-950/60 p-3">
+            <p className="text-xs text-gray-400">{t('noSavedCitiesForHome', language)}</p>
+            <button
+              type="button"
+              onClick={() => go?.('SavedCities')}
+              className="min-h-9 rounded-md border border-teal-800 px-3 text-xs font-semibold text-teal-300"
+            >
+              {t('openCityMode', language)}
+            </button>
+          </div>
+        )}
       </section>
 
       <section className={sectionClass}>
@@ -481,6 +573,21 @@ export default function Settings({ go }: Props) {
       )}
     </div>
   )
+}
+
+async function resolveCurrentDeviceCountry() {
+  const state = await refreshDeviceLocation()
+  if (!state.location) return null
+  const resolved = await reverseGeocodeCoordinates(state.location.latitude, state.location.longitude)
+  const countryCode = resolved.countryCode ? detectCountryCode(resolved.countryCode) : null
+  if (!countryCode) throw new Error('The coordinate lookup did not return a supported country.')
+  saveCachedLocation({
+    ...state.location,
+    city: resolved.city,
+    country: resolved.country,
+    countryCode
+  })
+  return { countryCode, resolved }
 }
 
 function highLatitudeTranslationKey(rule: HighLatKey): string {

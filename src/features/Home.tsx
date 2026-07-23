@@ -3,12 +3,29 @@ import { useEffect, useState } from 'react'
 import type { Screen } from '../types/nav'
 import { formatHijri } from '../lib/hijri'
 import { loadLanguage, t, type AppLanguage } from '../lib/i18n'
-import { refreshDeviceLocation } from '../lib/locationStore'
+import { refreshDeviceLocation, reverseGeocodeCoordinates, saveCachedLocation } from '../lib/locationStore'
 import { computePrayerTimes } from '../lib/prayer'
+import { applyCorrections } from '../lib/prayerCorrections'
 import { getRamadanDay, getRamadanStatus, loadRamadanSettings } from '../lib/ramadan'
+import {
+  correctionsForSavedCity,
+  loadSavedCities,
+  loadTravelDestinationId,
+  settingsForSavedCity
+} from '../lib/savedCities'
 
 
-const fmtTime = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+const fmtTime = (date: Date, timezone?: string) => {
+  try {
+    return date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: timezone
+    })
+  } catch {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+}
 
 const msUntilNextMidnight = () => {
   const now = new Date()
@@ -17,29 +34,13 @@ const msUntilNextMidnight = () => {
   return nextMidnight.getTime() - now.getTime()
 }
 
-const reverseGeocodeLocation = async (latitude: number, longitude: number) => {
-  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&zoom=10&addressdetails=1`
-  const response = await fetch(url, {
-    headers: {
-      Accept: 'application/json'
-    }
-  })
-
-  if (!response.ok) throw new Error('Unable to reverse geocode location')
-
-  const data = await response.json()
-  const address = data?.address ?? {}
-  const city = address.city || address.town || address.village || address.hamlet || address.municipality || address.county
-  const region = address.state || address.region
-  const country = address.country
-
-  const parts = [city, region, country].filter(Boolean)
-  return parts.length > 0 ? parts.join(', ') : data?.display_name || ''
-}
-
 export default function Home({ go }: { go: (tab: Screen) => void }) {
-  const [hijri, setHijri] = useState(formatHijri())
   const [language] = useState<AppLanguage>(() => loadLanguage())
+  const [hijri, setHijri] = useState(() => formatHijri(new Date(), language))
+  const [savedCity] = useState(() => {
+    const cityId = loadTravelDestinationId()
+    return loadSavedCities().find((city) => city.id === cityId) ?? null
+  })
   const [locationLabel, setLocationLabel] = useState('Location not available')
   const [prayerWindow, setPrayerWindow] = useState<PrayerWindow | null>(null)
   const [nextAt, setNextAt] = useState<string>('') // human local time for next prayer
@@ -55,12 +56,12 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
     let midnightTimeout: ReturnType<typeof setTimeout> | null = null
     let dailyInterval: ReturnType<typeof setInterval> | null = null
 
-    setHijri(formatHijri())
+    setHijri(formatHijri(new Date(), language))
 
     midnightTimeout = setTimeout(() => {
-      setHijri(formatHijri())
+      setHijri(formatHijri(new Date(), language))
       dailyInterval = setInterval(() => {
-        setHijri(formatHijri())
+        setHijri(formatHijri(new Date(), language))
       }, 24 * 60 * 60 * 1000)
     }, msUntilNextMidnight())
 
@@ -68,7 +69,7 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
       if (midnightTimeout) clearTimeout(midnightTimeout)
       if (dailyInterval) clearInterval(dailyInterval)
     }
-  }, [])
+  }, [language])
   
 
   // compute next prayer from current location
@@ -76,6 +77,21 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
     let cancelled = false
     ;(async () => {
       try {
+        if (savedCity) {
+          const calculated = computePrayerTimes(
+            { latitude: savedCity.latitude, longitude: savedCity.longitude },
+            new Date(),
+            settingsForSavedCity(savedCity)
+          )
+          const times = applyCorrections(calculated, correctionsForSavedCity(savedCity))
+          const window = getPrayerWindow(times)
+          if (cancelled) return
+          setLocationLabel(formatSavedCityLabel(savedCity))
+          setPrayerWindow(window)
+          setNextAt(fmtTime(window.nextTime, savedCity.timezone))
+          return
+        }
+
         const locState = await refreshDeviceLocation()
         if (!locState.location || cancelled) return
 
@@ -83,9 +99,15 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
         const longitude = locState.location.longitude
 
         try {
-          const readableLocation = await reverseGeocodeLocation(latitude, longitude)
+          const resolved = await reverseGeocodeCoordinates(latitude, longitude)
           if (!cancelled) {
-            setLocationLabel(readableLocation || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
+            setLocationLabel(resolved.label)
+            saveCachedLocation({
+              ...locState.location,
+              city: resolved.city,
+              country: resolved.country,
+              countryCode: resolved.countryCode
+            })
           }
         } catch {
           if (!cancelled) setLocationLabel(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
@@ -104,7 +126,7 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
       }
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [savedCity])
 
   // live countdown
   useEffect(() => {
@@ -136,7 +158,9 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
             Jumu’ah Mubarak
           </p>
         )}
-        <p className="text-bold text-gray-400">{locationLabel}</p>
+        <p className={`mt-1 text-sm ${savedCity ? 'font-semibold text-teal-300' : 'text-gray-400'}`}>
+          {savedCity ? `Saved City: ${locationLabel}` : locationLabel}
+        </p>
       </div>
 
       <section className="rounded-lg border border-gray-700 bg-gray-800 p-4" aria-labelledby="current-prayer-title">
@@ -182,6 +206,11 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
       </div>
     </div>
   )
+}
+
+function formatSavedCityLabel(city: ReturnType<typeof loadSavedCities>[number]) {
+  const cityName = city.name || city.city || 'Saved location'
+  return city.country ? `${cityName}, ${city.country}` : cityName
 }
 
 type PrayerWindow = {

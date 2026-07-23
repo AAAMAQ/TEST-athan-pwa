@@ -55,6 +55,14 @@ export default function Privacy({ go, backTarget = 'Credits' }: Props) {
         </p>
       </section>
 
+      <section className="rounded-lg border border-teal-900 bg-gray-800 p-4">
+        <h2 className="text-lg font-semibold text-teal-300">No Ads</h2>
+        <p className="mt-2 text-sm leading-6 text-gray-300">
+          This app is completely ad-free. We believe in a respectful user experience without distractions.
+          No Ads means no tracking or data collection for advertising purposes.
+        </p>
+      </section>
+
       <section className="rounded-lg border border-gray-700 bg-gray-800 p-4">
         <h2 className="font-semibold">Contact</h2>
         <p className="mt-1 text-sm text-gray-300">

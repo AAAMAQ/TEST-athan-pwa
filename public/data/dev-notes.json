@@ -1,5 +1,17 @@
 [
   {
+    "id": "2026-07-23-v3-1-1",
+    "date": "2026-07-23",
+    "version": "v3.1.1",
+    "title": "Location, calendar, and Quran reliability update",
+    "summary": [
+      "Unified Home, Settings, and Simple Qibla around coordinate-based reverse geocoding so country selection follows the device location instead of the browser language. Deep Search Athan now applies the searched country's calculation method and madhab before generating times, and Saved Cities is now presented as City Mode.",
+      "Moved Quran Settings to a separate screen, added a daily Ayah with translation, persistent read-state highlighting, and a five-Ayah translation preview. Reworked offline Quran downloads to resume missing files through Cache Storage with retries instead of repeatedly filling localStorage.",
+      "Added a Settings preference for showing a selected City Mode timetable on Home, including a clear Saved City location label and the city's signed prayer corrections. Replaced device-dependent Hijri era formatting with an embedded Islamic civil calendar so Android consistently shows Safar and AH, and refreshed the daily and monthly Prayer Times screens to match the current navy and teal interface.",
+      "Restored the original Advanced Qibla north marker, made Settings status notices dismiss automatically, restored the full human-written Vision and copyright details, and added the explicit No Ads privacy promise."
+    ]
+  },
+  {
     "id": "2026-07-23-release",
     "date": "2026-07-23",
     "version": "v3.1.0",

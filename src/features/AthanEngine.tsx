@@ -8,6 +8,7 @@ import {
   type SavedCity
 } from '../lib/savedCities'
 import { formatSignedCorrection, PRAYER_CORRECTION_KEYS } from '../lib/prayerCorrections'
+import { getCountryPrayerConfig } from '../data/countryPrayerMethods'
 
 type Props = {
   go?: (screen: string) => void
@@ -35,6 +36,7 @@ type EngineLocation = {
   longitude: number
   timezone?: string
   offsetLabel?: string
+  countryCode?: string
 }
 
 type EnginePrayerRow = {
@@ -188,18 +190,23 @@ export default function AthanEngine({ go }: Props) {
 
       const engine = await loadEngine()
       const resolvedLocation = await engine.resolveLocation(query) as EngineLocation
+      const regionalConfig = getCountryPrayerConfig(resolvedLocation.countryCode)
+      const regionalMethod = toEngineMethod(regionalConfig.defaultMethod)
+      const regionalMadhab = regionalConfig.defaultMadhab
       const prayerRows = await engine.getPrayerRows({
         location: resolvedLocation,
         fromDate,
         toDate,
-        method,
-        madhab
+        method: regionalMethod,
+        madhab: regionalMadhab
       }) as EnginePrayerRow[]
 
+      setMethod(regionalMethod)
+      setMadhab(regionalMadhab)
       setLocation(resolvedLocation)
       setActiveSavedCityId('')
       setRows(prayerRows)
-      setNotice(`Generated ${prayerRows.length} day${prayerRows.length === 1 ? '' : 's'} of prayer times for ${resolvedLocation.label}.`)
+      setNotice(`Generated ${prayerRows.length} day${prayerRows.length === 1 ? '' : 's'} for ${resolvedLocation.label} using the ${regionalConfig.countryName} regional defaults (${regionalMethod}, ${regionalMadhab}).`)
     } catch (err) {
       setLocation(null)
       setRows([])
@@ -343,21 +350,21 @@ export default function AthanEngine({ go }: Props) {
       <section className="bg-gray-800 rounded-lg p-4 space-y-4">
         <div className="rounded border border-gray-700 bg-gray-900/70 p-3 space-y-3">
           <div>
-            <h2 className="font-semibold">Load a Saved City</h2>
+            <h2 className="font-semibold">Load from City Mode</h2>
             <p className="text-xs text-gray-400">
               Generate locally with the profile&apos;s method, madhab, high-latitude rule, and signed prayer corrections.
             </p>
           </div>
           {savedCities.length > 0 ? (
             <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-              <label htmlFor="deep-search-saved-city" className="sr-only">Saved city profile</label>
+              <label htmlFor="deep-search-saved-city" className="sr-only">City Mode profile</label>
               <select
                 id="deep-search-saved-city"
                 value={savedCityId}
                 onChange={(event) => setSavedCityId(event.target.value)}
                 className="w-full rounded bg-gray-950 border border-gray-700 px-3 py-2 text-white"
               >
-                <option value="">Choose a saved city</option>
+                <option value="">Choose a City Mode profile</option>
                 {savedCities.map((city) => (
                   <option key={city.id} value={city.id}>
                     {city.name || city.city || 'Unnamed city'}{city.country ? `, ${city.country}` : ''}
@@ -374,7 +381,7 @@ export default function AthanEngine({ go }: Props) {
               </button>
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No saved cities are available yet. Add one from Saved Cities first.</p>
+            <p className="text-sm text-gray-400">No City Mode profiles are available yet. Add one from More → City Mode first.</p>
           )}
         </div>
 

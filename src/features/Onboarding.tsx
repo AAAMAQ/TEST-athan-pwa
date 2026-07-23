@@ -17,7 +17,7 @@ const STEPS = [
   {
     title: 'Keep useful places ready',
     body: 'Save cities for travel, choose a method, and apply signed minute corrections when a local timetable differs.',
-    action: 'Open Saved Cities',
+    action: 'Open City Mode',
     screen: 'SavedCities',
     preview: 'cities'
   },
