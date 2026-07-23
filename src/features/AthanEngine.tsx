@@ -233,7 +233,7 @@ export default function AthanEngine({ go }: Props) {
       corrections,
       prayerTimesForDate: (date) => prayerTimesForSavedCity(city, date),
       sourceDescription: city.calculationMode === 'manual-timetable'
-        ? `Imported yearly timetable (${city.manualTimetable?.sourceFileName || 'Excel'})`
+        ? `Imported yearly timetable (${city.manualTimetable?.sourceFileName || 'file'})`
         : undefined
     })
 

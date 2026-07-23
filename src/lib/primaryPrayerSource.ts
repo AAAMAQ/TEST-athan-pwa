@@ -30,7 +30,7 @@ export async function getPrimaryPrayerContext(date = new Date()): Promise<Primar
       times: prayerTimesForSavedCity(savedCity, date),
       locationLabel: formatSavedCityLabel(savedCity),
       sourceLabel: savedCity.calculationMode === 'manual-timetable'
-        ? `Imported yearly timetable · ${savedCity.manualTimetable?.sourceFileName || 'Excel'}`
+        ? `Imported yearly timetable · ${savedCity.manualTimetable?.sourceFileName || 'file'}`
         : `${settingsForSavedCity(savedCity).method} · ${settingsForSavedCity(savedCity).madhab}`,
       settings: settingsForSavedCity(savedCity),
       savedCity,

@@ -34,17 +34,24 @@ export type ManualPrayerTimes = {
   isha: Date
 }
 
-const MAX_WORKBOOK_BYTES = 5 * 1024 * 1024
+const MAX_TIMETABLE_FILE_BYTES = 5 * 1024 * 1024
 const MIN_YEAR_ROWS = 300
 
 export async function parseManualPrayerTimetableFile(file: File): Promise<ManualPrayerTimetable> {
-  if (!file.name.toLowerCase().endsWith('.xlsx')) {
-    throw new Error('Choose an Excel .xlsx file.')
+  const extension = file.name.toLowerCase().split('.').pop()
+  if (!['xlsx', 'csv', 'json'].includes(extension || '')) {
+    throw new Error('Choose an .xlsx, .csv, or .json prayer timetable file.')
   }
-  if (file.size > MAX_WORKBOOK_BYTES) {
-    throw new Error('The Excel file is larger than 5 MB.')
+  if (file.size > MAX_TIMETABLE_FILE_BYTES) {
+    throw new Error('The timetable file is larger than 5 MB.')
   }
 
+  if (extension === 'csv') return parseCsvTimetable(file)
+  if (extension === 'json') return parseJsonTimetable(file)
+  return parseXlsxTimetable(file)
+}
+
+async function parseXlsxTimetable(file: File) {
   const XLSX = await import('@e965/xlsx')
   const workbook = XLSX.read(await readFileArrayBuffer(file), {
     type: 'array',
@@ -63,24 +70,81 @@ export async function parseManualPrayerTimetableFile(file: File): Promise<Manual
       raw: true,
       defval: ''
     })
-    const parsed = parseSheetRows(rows)
-    if (!parsed || Object.keys(parsed.rows).length < MIN_YEAR_ROWS) continue
+    const timetable = buildTimetableFromRows(rows, file.name, sheetName)
+    if (timetable) return timetable
+  }
 
-    const sourceCoordinates = parseCoordinatesMetadata(findMetadataValue(rows, 'coordinates'))
+  throw incompleteTimetableError()
+}
+
+async function parseCsvTimetable(file: File) {
+  const rows = parseCsv(await readFileText(file))
+  const timetable = buildTimetableFromRows(rows, file.name, 'CSV')
+  if (!timetable) throw incompleteTimetableError()
+  return timetable
+}
+
+async function parseJsonTimetable(file: File) {
+  let value: unknown
+  try {
+    value = JSON.parse(await readFileText(file))
+  } catch {
+    throw new Error('The JSON file is not valid JSON.')
+  }
+
+  const native = normalizeManualPrayerTimetable(value)
+  if (native) {
     return {
-      formatVersion: 1,
+      ...native,
       sourceFileName: file.name,
-      sourceSheetName: sheetName,
-      sourceLocation: findMetadataValue(rows, 'location'),
-      sourceLatitude: sourceCoordinates?.latitude,
-      sourceLongitude: sourceCoordinates?.longitude,
-      importedAt: new Date().toISOString(),
-      rowCount: Object.keys(parsed.rows).length,
-      rows: parsed.rows
+      sourceSheetName: 'JSON',
+      importedAt: new Date().toISOString()
     }
   }
 
-  throw new Error(
+  const container = value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+  const records = Array.isArray(value)
+    ? value
+    : firstArray(container?.prayerTimes, container?.data, container?.rows)
+  if (!records) throw incompleteTimetableError()
+
+  const rows = recordsToGrid(records)
+  const timetable = buildTimetableFromRows(rows, file.name, 'JSON', {
+    location: safeString(container?.location || container?.sourceLocation) || undefined,
+    latitude: finiteNumber(container?.latitude ?? container?.sourceLatitude),
+    longitude: finiteNumber(container?.longitude ?? container?.sourceLongitude)
+  })
+  if (!timetable) throw incompleteTimetableError()
+  return timetable
+}
+
+function buildTimetableFromRows(
+  rows: unknown[][],
+  sourceFileName: string,
+  sourceSheetName: string,
+  metadata?: { location?: string; latitude?: number; longitude?: number }
+): ManualPrayerTimetable | null {
+  const parsed = parseSheetRows(rows)
+  if (!parsed || Object.keys(parsed.rows).length < MIN_YEAR_ROWS) return null
+
+  const sourceCoordinates = parseCoordinatesMetadata(findMetadataValue(rows, 'coordinates'))
+  return {
+    formatVersion: 1,
+    sourceFileName,
+    sourceSheetName,
+    sourceLocation: metadata?.location || findMetadataValue(rows, 'location'),
+    sourceLatitude: metadata?.latitude ?? sourceCoordinates?.latitude,
+    sourceLongitude: metadata?.longitude ?? sourceCoordinates?.longitude,
+    importedAt: new Date().toISOString(),
+    rowCount: Object.keys(parsed.rows).length,
+    rows: parsed.rows
+  }
+}
+
+function incompleteTimetableError() {
+  return new Error(
     'No complete yearly prayer timetable was found. Include at least 300 dated rows with Fajr, Sunrise, Dhuhr/Zuhar, Asr, Maghrib, and Isha.'
   )
 }
@@ -96,6 +160,71 @@ function readFileArrayBuffer(file: File): Promise<ArrayBuffer> {
     reader.onerror = () => reject(new Error('The Excel file could not be read.'))
     reader.readAsArrayBuffer(file)
   })
+}
+
+function readFileText(file: File): Promise<string> {
+  if (typeof file.text === 'function') return file.text()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result)
+      else reject(new Error('The timetable file could not be read.'))
+    }
+    reader.onerror = () => reject(new Error('The timetable file could not be read.'))
+    reader.readAsText(file)
+  })
+}
+
+function parseCsv(text: string): unknown[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let cell = ''
+  let quoted = false
+  const source = text.replace(/^\uFEFF/, '')
+
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index]
+    if (character === '"') {
+      if (quoted && source[index + 1] === '"') {
+        cell += '"'
+        index += 1
+      } else {
+        quoted = !quoted
+      }
+    } else if (character === ',' && !quoted) {
+      row.push(cell.trim())
+      cell = ''
+    } else if ((character === '\n' || character === '\r') && !quoted) {
+      if (character === '\r' && source[index + 1] === '\n') index += 1
+      row.push(cell.trim())
+      if (row.some(Boolean)) rows.push(row)
+      row = []
+      cell = ''
+    } else {
+      cell += character
+    }
+  }
+  row.push(cell.trim())
+  if (row.some(Boolean)) rows.push(row)
+  if (quoted) throw new Error('The CSV file contains an unfinished quoted field.')
+  return rows
+}
+
+function recordsToGrid(records: unknown[]) {
+  if (records.length === 0) return []
+  if (records.every(Array.isArray)) return records as unknown[][]
+
+  const objects = records.filter((record) => record && typeof record === 'object' && !Array.isArray(record)) as Record<string, unknown>[]
+  if (objects.length === 0) return []
+  const headers = Array.from(new Set(objects.flatMap((record) => Object.keys(record))))
+  return [
+    headers,
+    ...objects.map((record) => headers.map((header) => record[header] ?? ''))
+  ]
+}
+
+function firstArray(...values: unknown[]) {
+  return values.find(Array.isArray) as unknown[] | undefined
 }
 
 export function getManualPrayerTimes(
@@ -140,7 +269,7 @@ export function normalizeManualPrayerTimetable(value: unknown): ManualPrayerTime
 
   return {
     formatVersion: 1,
-    sourceFileName: safeString(maybe.sourceFileName) || 'Imported timetable.xlsx',
+    sourceFileName: safeString(maybe.sourceFileName) || 'Imported timetable file',
     sourceSheetName: safeString(maybe.sourceSheetName) || 'Prayer Times',
     sourceLocation: safeString(maybe.sourceLocation) || undefined,
     sourceLatitude: finiteNumber(maybe.sourceLatitude),

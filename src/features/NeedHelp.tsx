@@ -38,10 +38,11 @@ export default function NeedHelp({ go, backTarget = 'Credits' }: Props) {
         <a href="#downloadics" className="underline">Download and Set reminders via Calendar (.ics)</a>
         <a href="#whatsnew" className="underline">What&apos;s new?</a>
         <a href="#qibla" className="underline">Qibla not accurate?</a>
-        <a href="#v3features" className="underline">v3.1.0 features</a>
+        <a href="#v3features" className="underline">v3.2.1 features</a>
         <a href="#quran" className="underline">How to use the Quran</a>
         <a href="#bookmarks" className="underline">Quran bookmarks</a>
         <a href="#location" className="underline">Location & accuracy</a>
+        <a href="#manual-timetable" className="underline">Prayer times do not match my mosque</a>
         <a href="#notifications" className="underline">Reminders & notifications</a>
         <a href="#methods" className="underline"> Which Calculation method & settings to choose?</a>
         <a href="#calculation" className="underline">Calculation method, Madhab & High-latitude rule</a>
@@ -137,7 +138,7 @@ export default function NeedHelp({ go, backTarget = 'Credits' }: Props) {
       </section>
 
       <section id="v3features" className="space-y-2">
-        <h2 className="text-xl font-semibold">v3.1.0 feature guide</h2>
+        <h2 className="text-xl font-semibold">v3.2.1 feature guide</h2>
         <div className="space-y-3 text-sm text-gray-200">
           <p>
             <span className="font-semibold text-teal-300">Qibla:</span> Simple Mode gives a large readable compass,
@@ -162,37 +163,96 @@ export default function NeedHelp({ go, backTarget = 'Credits' }: Props) {
             minute offsets, such as Fajr +4 or Isha +5. They do not overwrite the built-in country defaults.
           </p>
           <div id="manual-timetable" className="space-y-3 rounded-lg border border-teal-900 bg-teal-950/20 p-4">
-            <h3 className="font-semibold text-teal-300">Import a local yearly prayer timetable</h3>
+            <h3 className="text-lg font-semibold text-teal-300">Prayer times do not match your local mosque?</h3>
             <p>
-              Use this when your local mosques follow an established printed timetable that does not match any
-              built-in calculation method. City Mode keeps the imported file on this device and reuses its
-              Gregorian month-and-day times each year.
+              Calculation methods are estimates based on the sun&apos;s position. Some mosques instead follow an
+              official local calendar with seasonal adjustments or times approved by a local Islamic authority.
+              If Athan PWA does not match that calendar, you can save the mosque&apos;s exact timetable in City Mode
+              and use it on Home, Prayer Times, Masjid Mode, previews, and calendar exports.
             </p>
+
+            <div className="space-y-2 rounded-md border border-gray-700 bg-gray-950/50 p-3">
+              <h4 className="font-semibold">Before importing a file</h4>
+              <ol className="list-decimal space-y-1 pl-5 text-gray-300">
+                <li>Confirm that the location shown by Athan PWA is correct.</li>
+                <li>In Settings, try <span className="font-semibold text-white">Auto</span> so the app uses the usual method for that country.</li>
+                <li>Check the Asr choice. Standard means earlier Asr; Hanafi means later Asr.</li>
+                <li>
+                  If every prayer differs by only a few minutes, use the positive or negative correction fields in
+                  City Mode instead of building a yearly file.
+                </li>
+                <li>
+                  Import a timetable when the differences vary throughout the year or your mosque follows its own
+                  published calendar.
+                </li>
+              </ol>
+            </div>
+
+            <h4 className="font-semibold text-white">How to prepare the timetable</h4>
             <ol className="list-decimal space-y-2 pl-5 text-gray-200">
-              <li>Take a clear, straight photo of every monthly table in the official local prayer calendar.</li>
-              <li>Send the photos to ChatGPT or another trusted AI tool and ask it to create one Excel .xlsx file.</li>
+              <li>Obtain the official yearly calendar from your mosque or local Islamic authority.</li>
               <li>
-                Make sure the workbook has at least 300 dated rows and these columns:
-                Date, Fajr, Sunrise, Dhuhr or Zuhar, Asr, Maghrib, and Isha. Separate Asr Shafi/Asr Hanafi and
-                Isha Shafi/Isha Hanafi columns are also supported.
+                If it is printed, take a clear, straight photo of every month. Check that every date and prayer time
+                is visible and that no page edge, shadow, or reflection covers a value.
               </li>
-              <li>Open More → City Mode, create or select a city profile, then tap Import Excel Timetable.</li>
-              <li>Rename the profile clearly, for example Main Chennai or Outer Chennai, and save it.</li>
               <li>
-                Open Settings → Primary prayer time source and choose that City Mode profile. It will override
-                device-location calculations on both Home and Prayer Times.
+                Enter the data in a spreadsheet yourself, or send the photos to ChatGPT or another tool you trust
+                and ask it to create an <span className="font-mono">.xlsx</span>, <span className="font-mono">.csv</span>,
+                or <span className="font-mono">.json</span> timetable.
               </li>
-              <li>In Masjid Mode, link the same City Mode profile, then store that masjid’s separate Iqama and Jumu’ah schedule.</li>
+              <li>
+                The file must contain at least 300 Gregorian dated rows. Use one row per date with:
+                <span className="font-semibold"> Date, Fajr, Sunrise, Dhuhr (or Zuhar), Asr, Maghrib, and Isha</span>.
+                Times may use a consistent 24-hour or AM/PM format.
+              </li>
+              <li>
+                If the source includes separate schools, columns named Asr Shafi, Asr Hanafi, Isha Shafi, and Isha
+                Hanafi are supported. The app uses the appropriate value for the profile&apos;s selected madhab.
+              </li>
             </ol>
+
+            <h4 className="font-semibold text-white">How to import and activate it</h4>
+            <ol className="list-decimal space-y-2 pl-5 text-gray-200">
+              <li>Open <span className="font-semibold">More → City Mode</span>.</li>
+              <li>Create a new city profile, or duplicate an existing profile if you want to preserve its current settings.</li>
+              <li>Enter the correct city and country. Coordinates are optional when they are already included in the imported file.</li>
+              <li>Under Manual yearly prayer timetable, tap <span className="font-semibold">Import Timetable File</span> and select the file.</li>
+              <li>Wait for the confirmation showing the number of imported Gregorian dates. A full calendar normally has 365 or 366 rows.</li>
+              <li>Rename the profile clearly, such as Main Central London, Islamic Society of Boston, or Dubai Hanafi, then save it.</li>
+              <li>Preview several dates and compare every prayer with the original mosque calendar.</li>
+              <li>
+                Open <span className="font-semibold">Settings → Primary prayer time source</span> and select the
+                imported City Mode profile. It will replace device-location calculations on Home and Prayer Times.
+              </li>
+              <li>
+                Optionally open Masjid Mode and link this City Mode profile. The imported file supplies Athan times;
+                the masjid profile continues to store its separate Iqama and Jumu&apos;ah schedule.
+              </li>
+            </ol>
+
+            <div className="space-y-2 rounded-md border border-gray-700 bg-gray-950/50 p-3 text-xs text-gray-300">
+              <h4 className="text-sm font-semibold text-white">Supported file notes</h4>
+              <p><span className="font-semibold text-teal-300">Excel (.xlsx):</span> Put all dated rows on one sheet, preferably named All Days.</p>
+              <p><span className="font-semibold text-teal-300">CSV (.csv):</span> Include one header row followed by all dated records in the same file.</p>
+              <p>
+                <span className="font-semibold text-teal-300">JSON (.json):</span> Use an array of prayer records, or
+                an object containing a prayerTimes, data, or rows array. Location, latitude, and longitude metadata
+                may also be included.
+              </p>
+              <p>The maximum import size is 5 MB. The file is processed locally and is not uploaded by Athan PWA.</p>
+            </div>
+
             <div className="rounded-md bg-gray-950/70 p-3">
               <p className="text-xs font-semibold uppercase text-gray-400">Suggested AI prompt</p>
               <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-gray-200">
-                Create an Excel .xlsx yearly Gregorian prayer timetable from these monthly prayer-calendar photos.
+                Create a yearly Gregorian prayer timetable from these monthly prayer-calendar photos as an .xlsx,
+                .csv, or .json file.
                 Use one row per date and the columns Date, Fajr, Sunrise, Dhuhr, Asr, Maghrib, and Isha. Preserve
                 every printed time exactly, include AM/PM or 24-hour times consistently, do not estimate missing
                 values, and flag any unreadable cells for me to verify. If the source has separate Shafi and Hanafi
                 times, use Asr Shafi, Asr Hanafi, Isha Shafi, and Isha Hanafi columns. Add all dates to a sheet named
-                All Days and save the result as an .xlsx file.
+                All Days when using Excel. For JSON, return an object with optional location, latitude, and longitude
+                fields plus a prayerTimes array containing the same dated records.
               </p>
             </div>
             <p className="text-xs text-amber-200">
@@ -200,6 +260,17 @@ export default function NeedHelp({ go, backTarget = 'Credits' }: Props) {
               as your primary source. Athan PWA validates the structure, but it cannot verify that an AI copied every
               photographed number correctly.
             </p>
+
+            <div className="space-y-2 text-xs text-gray-300">
+              <h4 className="text-sm font-semibold text-white">If the import is rejected</h4>
+              <ul className="list-disc space-y-1 pl-5">
+                <li>Check that the filename ends in .xlsx, .csv, or .json and is no larger than 5 MB.</li>
+                <li>Make sure there are at least 300 valid dated rows, not separate decorative monthly tables without a Date column.</li>
+                <li>Check that all required prayer columns are present and that merged cells have not hidden values.</li>
+                <li>Remove headings, footnotes, or blank rows placed inside the daily records if they confuse the column layout.</li>
+                <li>For a missing or unreadable date, correct the source file rather than guessing the prayer time.</li>
+              </ul>
+            </div>
           </div>
           <p>
             <span className="font-semibold text-teal-300">Masjid and Iqama:</span> Local Iqama can load rules from a

@@ -1,5 +1,16 @@
 [
   {
+    "id": "2026-07-24-v3-2-1",
+    "date": "2026-07-24",
+    "version": "v3.2.1",
+    "title": "CSV and JSON timetable imports",
+    "summary": [
+      "Expanded City Mode yearly timetable imports to support CSV and JSON alongside Excel .xlsx files, using the same local-only validation and prayer-source pipeline.",
+      "CSV supports quoted fields and the standard Date, Fajr, Sunrise, Dhuhr/Zuhar, Asr, Maghrib, and Isha columns. JSON supports dated prayer-record arrays or Athan PWA's recurring month-day timetable structure, with optional location and coordinate metadata.",
+      "Updated the timetable picker, Help instructions, AI conversion prompt, tests, and release information for all three supported formats."
+    ]
+  },
+  {
     "id": "2026-07-23-v3-2-0",
     "date": "2026-07-23",
     "version": "v3.2.0",

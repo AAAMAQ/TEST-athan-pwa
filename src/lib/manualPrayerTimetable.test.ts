@@ -53,7 +53,62 @@ describe('manual prayer timetable import', () => {
     expect(shafi?.isha.getMinutes()).toBe(30)
     expect(hanafi?.isha.getMinutes()).toBe(45)
   })
+
+  it('imports a standard CSV yearly timetable', async () => {
+    const records = makeStandardRecords()
+    const csv = [
+      'Date,Fajr,Sunrise,Dhuhr,Asr,Maghrib,Isha',
+      ...records.map((record) => [
+        record.Date,
+        record.Fajr,
+        record.Sunrise,
+        record.Dhuhr,
+        record.Asr,
+        record.Maghrib,
+        record.Isha
+      ].join(','))
+    ].join('\n')
+
+    const timetable = await parseManualPrayerTimetableFile(new File([csv], 'chennai.csv', { type: 'text/csv' }))
+    expect(timetable.rowCount).toBe(365)
+    expect(timetable.sourceSheetName).toBe('CSV')
+    expect(getManualPrayerTimes(timetable, new Date(2026, 6, 24), 'Shafi')?.fajr.getMinutes()).toBe(10)
+  })
+
+  it('imports JSON records with local metadata', async () => {
+    const json = JSON.stringify({
+      location: 'Chennai, Tamil Nadu, India',
+      latitude: 13.04,
+      longitude: 80.17,
+      prayerTimes: makeStandardRecords()
+    })
+
+    const timetable = await parseManualPrayerTimetableFile(new File([json], 'chennai.json', { type: 'application/json' }))
+    expect(timetable.rowCount).toBe(365)
+    expect(timetable.sourceSheetName).toBe('JSON')
+    expect(timetable.sourceLocation).toBe('Chennai, Tamil Nadu, India')
+    expect(timetable.sourceLatitude).toBe(13.04)
+    expect(timetable.sourceLongitude).toBe(80.17)
+  })
 })
+
+function makeStandardRecords() {
+  const records = []
+  const current = new Date(2025, 0, 1)
+  while (current.getFullYear() === 2025) {
+    records.push({
+      Date: formatDate(current),
+      Fajr: '05:10',
+      Sunrise: '06:25',
+      Dhuhr: '12:30',
+      Asr: '16:45',
+      Maghrib: '18:15',
+      Isha: '19:45'
+    })
+    current.setDate(current.getDate() + 1)
+  }
+  return records
+}
 
 function formatDate(date: Date) {
   return [

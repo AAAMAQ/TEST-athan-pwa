@@ -127,9 +127,9 @@ export default function SavedCities({ go }: Props) {
       const next = upsertSavedCity(updated, cities)
       setCities(next)
       setSelectedId(updated.id)
-      setMessage(`Imported ${manualTimetable.rowCount} Gregorian dates from ${manualTimetable.sourceSheetName}. This profile now uses the Excel timetable.`)
+      setMessage(`Imported ${manualTimetable.rowCount} Gregorian dates from ${manualTimetable.sourceSheetName}. This profile now uses the timetable file.`)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'The Excel timetable could not be imported.')
+      setMessage(error instanceof Error ? error.message : 'The timetable file could not be imported.')
     }
   }
 
@@ -259,7 +259,7 @@ export default function SavedCities({ go }: Props) {
                 <option value="auto">Auto country defaults</option>
                 <option value="manual-method">Manual method</option>
                 <option value="custom-corrections">Manual method + corrections</option>
-                <option value="manual-timetable" disabled={!selected.manualTimetable}>Imported yearly Excel timetable</option>
+                <option value="manual-timetable" disabled={!selected.manualTimetable}>Imported yearly timetable file</option>
               </select>
             </label>
             <SelectField label="Method" value={selected.calculationMethod} options={METHODS} onChange={(value) => updateSelected({ ...selected, calculationMethod: value as MethodKey, calculationMode: selected.calculationMode === 'custom-corrections' ? 'custom-corrections' : 'manual-method' })} />
@@ -271,14 +271,14 @@ export default function SavedCities({ go }: Props) {
             <div>
               <h3 className="font-semibold">Manual yearly prayer timetable</h3>
               <p className="mt-1 text-xs leading-5 text-gray-400">
-                Import an .xlsx calendar when local mosque times differ from built-in calculation methods. The file is read only on this device and is never uploaded.
+                Import an .xlsx, .csv, or .json calendar when local mosque times differ from built-in calculation methods. The file is read only on this device and is never uploaded.
               </p>
             </div>
             <label className="inline-flex min-h-11 cursor-pointer items-center rounded-md border border-teal-800 bg-teal-950/40 px-4 text-sm font-semibold text-teal-200 hover:bg-teal-900/50">
-              Import Excel Timetable
+              Import Timetable File
               <input
                 type="file"
-                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                accept=".xlsx,.csv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/json"
                 className="sr-only"
                 onChange={(event) => {
                   void importTimetable(event.target.files?.[0])
@@ -290,7 +290,7 @@ export default function SavedCities({ go }: Props) {
               <div className="rounded-md bg-gray-950/70 p-3 text-xs leading-5 text-gray-300">
                 <p className="font-semibold text-teal-300">Imported timetable active</p>
                 <p>{selected.manualTimetable.sourceFileName} · {selected.manualTimetable.rowCount} dates</p>
-                <p>Sheet: {selected.manualTimetable.sourceSheetName}{selected.manualTimetable.sourceLocation ? ` · ${selected.manualTimetable.sourceLocation}` : ''}</p>
+                <p>Source: {selected.manualTimetable.sourceSheetName}{selected.manualTimetable.sourceLocation ? ` · ${selected.manualTimetable.sourceLocation}` : ''}</p>
                 <button
                   type="button"
                   onClick={() => updateSelected({ ...selected, calculationMode: 'auto', manualTimetable: undefined })}
@@ -382,7 +382,7 @@ function timetableOptions(city: SavedCity, fromDate: string, toDate: string) {
     corrections: correctionsForSavedCity(city),
     prayerTimesForDate: (date: Date) => prayerTimesForSavedCity(city, date),
     sourceDescription: city.calculationMode === 'manual-timetable'
-      ? `Imported yearly timetable (${city.manualTimetable?.sourceFileName || 'Excel'})`
+      ? `Imported yearly timetable (${city.manualTimetable?.sourceFileName || 'file'})`
       : undefined
   }
 }

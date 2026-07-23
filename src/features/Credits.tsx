@@ -115,7 +115,7 @@ export default function Credits({ go, backTarget }: Props) {
           <CreditRow label="Date of Current Version" value={formatDevNoteDate(ATHAN_RELEASE.updatedAt)} />
           <CreditRow
             label="Latest Update"
-            value="v3.2.0 adds primary prayer sources across Home and Prayer, private yearly Excel timetable imports in City Mode, reusable city profiles for Masjid Mode, and a complete local-calendar import guide."
+            value="v3.2.1 expands private yearly timetable imports to Excel, CSV, and JSON while retaining the shared City Mode, Home, Prayer, Deep Search, and Masjid source workflow."
           />
           <CreditRow label="Company" value="BiG MAQ Studio" />
         </dl>
