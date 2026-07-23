@@ -115,7 +115,7 @@ export default function Credits({ go, backTarget }: Props) {
           <CreditRow label="Date of Current Version" value={formatDevNoteDate(ATHAN_RELEASE.updatedAt)} />
           <CreditRow
             label="Latest Update"
-            value="v3.1.1 adds a City Mode timetable option for Home, reliable built-in Hijri dates, refreshed Prayer Times screens, coordinate-based country detection, regional Deep Search defaults, and improved Quran offline reading."
+            value="v3.2.0 adds primary prayer sources across Home and Prayer, private yearly Excel timetable imports in City Mode, reusable city profiles for Masjid Mode, and a complete local-calendar import guide."
           />
           <CreditRow label="Company" value="BiG MAQ Studio" />
         </dl>

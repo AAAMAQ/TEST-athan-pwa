@@ -18,6 +18,7 @@ export type MasjidProfile = {
   id: string
   name: string
   city: string
+  cityProfileId?: string
   address: string
   notes: string
   iqamaRules: Record<IqamaPrayerName, MasjidIqamaRule>
@@ -53,6 +54,7 @@ export function createMasjidProfile(): MasjidProfile {
     id: makeId('masjid'),
     name: '',
     city: '',
+    cityProfileId: undefined,
     address: '',
     notes: '',
     iqamaRules: makeDefaultIqamaRules(),
@@ -122,6 +124,7 @@ function normalizeMasjidProfile(value: unknown): MasjidProfile {
     id: safeString(maybe.id) || makeId('masjid'),
     name: safeString(maybe.name),
     city: safeString(maybe.city),
+    cityProfileId: safeString(maybe.cityProfileId) || undefined,
     address: safeString(maybe.address),
     notes: safeString(maybe.notes),
     iqamaRules,

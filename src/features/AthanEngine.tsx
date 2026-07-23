@@ -4,6 +4,7 @@ import { useState } from 'react'
 import {
   correctionsForSavedCity,
   loadSavedCities,
+  prayerTimesForSavedCity,
   settingsForSavedCity,
   type SavedCity
 } from '../lib/savedCities'
@@ -229,7 +230,11 @@ export default function AthanEngine({ go }: Props) {
       fromDate: start,
       toDate: end,
       settings,
-      corrections
+      corrections,
+      prayerTimesForDate: (date) => prayerTimesForSavedCity(city, date),
+      sourceDescription: city.calculationMode === 'manual-timetable'
+        ? `Imported yearly timetable (${city.manualTimetable?.sourceFileName || 'Excel'})`
+        : undefined
     })
 
     const prayerRows: EnginePrayerRow[] = timetableRows.map((row) => ({
@@ -263,7 +268,7 @@ export default function AthanEngine({ go }: Props) {
       setNotice('')
       const prayerRows = await generateSavedCityRows(city)
       setQuery(city.name || city.city)
-      setNotice(`Generated ${prayerRows.length} day${prayerRows.length === 1 ? '' : 's'} for ${city.name || city.city} using its saved calculation settings and corrections.`)
+      setNotice(`Generated ${prayerRows.length} day${prayerRows.length === 1 ? '' : 's'} for ${city.name || city.city} using ${city.calculationMode === 'manual-timetable' ? 'its imported yearly timetable' : 'its saved calculation settings and corrections'}.`)
     } catch (err) {
       setRows([])
       setError(getErrorMessage(err, 'Could not generate prayer times for this saved city.'))
@@ -284,7 +289,7 @@ export default function AthanEngine({ go }: Props) {
 
       if (activeSavedCity) {
         await generateSavedCityRows(activeSavedCity)
-        setNotice(`Updated ${activeSavedCity.name || activeSavedCity.city} using its saved method, madhab, high-latitude rule, and corrections.`)
+        setNotice(`Updated ${activeSavedCity.name || activeSavedCity.city} using ${activeSavedCity.calculationMode === 'manual-timetable' ? 'its imported yearly timetable' : 'its saved method, madhab, high-latitude rule, and corrections'}.`)
         return
       }
 

@@ -1,5 +1,16 @@
 [
   {
+    "id": "2026-07-23-v3-2-0",
+    "date": "2026-07-23",
+    "version": "v3.2.0",
+    "title": "Primary prayer sources and local timetable imports",
+    "summary": [
+      "Renamed Home prayer source to Primary prayer time source and made the selected City Mode profile override device location on both Home and Prayer Times, including the monthly timetable.",
+      "Added private client-side .xlsx imports for complete Gregorian yearly prayer calendars. City Mode supports the Chennai All Days format, simpler standard columns, separate Shafi/Hanafi Asr and Isha values, profile duplication, previews, Deep Search generation, and calendar/text exports.",
+      "Masjid Mode can now link a City Mode Athan preset while retaining separate Iqama and Jumu’ah data. More now places City Mode above Salah Tracker, and Need Help includes a photo-to-Excel workflow, reusable AI prompt, required columns, and verification warning."
+    ]
+  },
+  {
     "id": "2026-07-23-v3-1-1",
     "date": "2026-07-23",
     "version": "v3.1.1",

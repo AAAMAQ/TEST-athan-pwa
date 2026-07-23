@@ -83,8 +83,11 @@ export function computePrayerTimes(
   return new Adhan.PrayerTimes(new Adhan.Coordinates(coords.latitude, coords.longitude), date, params)
 }
 
-export function nextPrayer(prayerTimes: PrayerTimes): { name: string; time: Date } {
-  const now = new Date()
+export function nextPrayer(
+  prayerTimes: Pick<PrayerTimes, 'fajr' | 'sunrise' | 'dhuhr' | 'asr' | 'maghrib' | 'isha'>,
+  now = new Date(),
+  nextFajr?: Date
+): { name: string; time: Date } {
   type PTMap = Pick<PrayerTimes, 'fajr' | 'sunrise' | 'dhuhr' | 'asr' | 'maghrib' | 'isha'>
   const pt = prayerTimes as PTMap
   const order: (keyof PTMap)[] = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha']
@@ -93,5 +96,5 @@ export function nextPrayer(prayerTimes: PrayerTimes): { name: string; time: Date
     if (now < t) return { name: p, time: t }
   }
   // next day fajr
-  return { name: 'fajr', time: new Date(pt.fajr.getTime() + 24 * 60 * 60 * 1000) }
+  return { name: 'fajr', time: nextFajr ?? new Date(pt.fajr.getTime() + 24 * 60 * 60 * 1000) }
 }

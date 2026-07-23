@@ -21,6 +21,11 @@ const items = [
     screen: 'MasjidMode'
   },
   {
+    titleKey: 'savedCitiesTravel',
+    descriptionKey: 'savedCitiesDescription',
+    screen: 'SavedCities'
+  },
+  {
     titleKey: 'salahTracker',
     descriptionKey: 'salahInsightsDescription',
     screen: 'SalahTracker'
@@ -29,11 +34,6 @@ const items = [
     titleKey: 'ramadanMode',
     descriptionKey: 'ramadanModeDescription',
     screen: 'RamadanMode'
-  },
-  {
-    titleKey: 'savedCitiesTravel',
-    descriptionKey: 'savedCitiesDescription',
-    screen: 'SavedCities'
   },
   {
     titleKey: 'backupRestore',

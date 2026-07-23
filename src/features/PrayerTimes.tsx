@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { formatHijri } from '../lib/hijri'
 import { loadLanguage, t, type AppLanguage } from '../lib/i18n'
-import { loadCachedLocation, refreshDeviceLocation } from '../lib/locationStore'
-import { computePrayerTimes, loadSettings, nextPrayer } from '../lib/prayer'
+import { nextPrayer } from '../lib/prayer'
+import { getPrimaryPrayerContext, loadPrimarySavedCity } from '../lib/primaryPrayerSource'
 import PrayerMonth from './PrayerMonth.tsx'
 
 type PrayerKey = 'fajr' | 'sunrise' | 'dhuhr' | 'asr' | 'maghrib' | 'isha'
@@ -14,13 +14,6 @@ function formatTime(date: Date) {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
-function formatLocation() {
-  const location = loadCachedLocation()
-  if (!location) return 'Current device location'
-  const place = [location.city, location.country].filter(Boolean).join(', ')
-  return place || `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
-}
-
 export default function PrayerTimes() {
   const [times, setTimes] = useState<PrayerTimesState>({})
   const [next, setNext] = useState<{ name: string; time: Date } | null>(null)
@@ -29,9 +22,10 @@ export default function PrayerTimes() {
   const [showMonth, setShowMonth] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [locationLabel] = useState(formatLocation)
+  const [locationLabel, setLocationLabel] = useState('Current device location')
+  const [sourceLabel, setSourceLabel] = useState('')
+  const [usesSavedCity, setUsesSavedCity] = useState(() => Boolean(loadPrimarySavedCity()))
   const isFriday = new Date().getDay() === 5
-  const settings = useMemo(loadSettings, [])
 
   const prayerLabels: Record<PrayerKey, string> = {
     fajr: t('fajr', language),
@@ -45,28 +39,20 @@ export default function PrayerTimes() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const location = await refreshDeviceLocation()
-      if (!location.location || cancelled) {
-        if (!cancelled) {
-          setError('Location permission is needed to calculate local prayer times.')
-          setLoading(false)
-        }
-        return
-      }
-      const calculated = computePrayerTimes({
-        latitude: location.location.latitude,
-        longitude: location.location.longitude
-      })
+      const context = await getPrimaryPrayerContext()
       if (cancelled) return
       setTimes({
-        fajr: calculated.fajr,
-        sunrise: calculated.sunrise,
-        dhuhr: calculated.dhuhr,
-        asr: calculated.asr,
-        maghrib: calculated.maghrib,
-        isha: calculated.isha
+        fajr: context.times.fajr,
+        sunrise: context.times.sunrise,
+        dhuhr: context.times.dhuhr,
+        asr: context.times.asr,
+        maghrib: context.times.maghrib,
+        isha: context.times.isha
       })
-      setNext(nextPrayer(calculated))
+      setNext(nextPrayer(context.times, new Date(), context.nextFajr))
+      setLocationLabel(context.locationLabel)
+      setSourceLabel(context.sourceLabel)
+      setUsesSavedCity(Boolean(context.savedCity))
       setLoading(false)
     })().catch(() => {
       if (!cancelled) {
@@ -116,7 +102,9 @@ export default function PrayerTimes() {
         <p className="text-xs font-semibold uppercase text-teal-400">Today</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{t('prayerTimes', language)}</h2>
         <p className="mt-1 text-sm text-gray-400">{formatHijri(new Date(), language)}</p>
-        <p className="mt-1 text-xs text-gray-500">{locationLabel}</p>
+        <p className={`mt-1 text-xs ${usesSavedCity ? 'font-semibold text-teal-300' : 'text-gray-500'}`}>
+          {usesSavedCity ? `Saved City: ${locationLabel}` : locationLabel}
+        </p>
       </header>
 
       {next && nextKey && (
@@ -165,7 +153,7 @@ export default function PrayerTimes() {
       <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-800/60 p-4">
         <div>
           <p className="text-sm font-semibold text-gray-100">Calculation</p>
-          <p className="mt-1 text-xs text-gray-400">{settings.method} · {settings.madhab}</p>
+          <p className="mt-1 text-xs text-gray-400">{sourceLabel || 'Loading prayer source…'}</p>
         </div>
         <button
           type="button"

@@ -18,6 +18,15 @@ export type TimetableOptions = {
   toDate: Date
   settings: PrayerSettings
   corrections?: PrayerTimeCorrections
+  prayerTimesForDate?: (date: Date) => {
+    fajr: Date
+    sunrise: Date
+    dhuhr: Date
+    asr: Date
+    maghrib: Date
+    isha: Date
+  }
+  sourceDescription?: string
 }
 
 export function getTimetableRows(options: TimetableOptions): TimetableRow[] {
@@ -25,7 +34,9 @@ export function getTimetableRows(options: TimetableOptions): TimetableRow[] {
   const current = startOfDay(options.fromDate)
   const end = startOfDay(options.toDate)
   while (current <= end) {
-    const times = applyCorrections(computePrayerTimes(options.coords, current, options.settings), options.corrections)
+    const times = options.prayerTimesForDate
+      ? options.prayerTimesForDate(current)
+      : applyCorrections(computePrayerTimes(options.coords, current, options.settings), options.corrections)
     rows.push({
       date: formatDate(current),
       Fajr: formatTime(times.fajr),
@@ -49,7 +60,7 @@ export function buildTimetableText(options: TimetableOptions): string {
     'Athan PWA Prayer Timetable',
     `Location: ${options.locationName}`,
     `Date range: ${formatDate(options.fromDate)} to ${formatDate(options.toDate)}`,
-    `Method: ${options.settings.method}`,
+    `Source: ${options.sourceDescription || options.settings.method}`,
     `Madhab: ${options.settings.madhab}`,
     `High latitude rule: ${options.settings.highLatRule}`,
     `Corrections (minutes): ${correctionSummary}`,

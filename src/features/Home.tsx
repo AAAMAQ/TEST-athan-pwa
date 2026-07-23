@@ -3,16 +3,8 @@ import { useEffect, useState } from 'react'
 import type { Screen } from '../types/nav'
 import { formatHijri } from '../lib/hijri'
 import { loadLanguage, t, type AppLanguage } from '../lib/i18n'
-import { refreshDeviceLocation, reverseGeocodeCoordinates, saveCachedLocation } from '../lib/locationStore'
-import { computePrayerTimes } from '../lib/prayer'
-import { applyCorrections } from '../lib/prayerCorrections'
+import { getPrimaryPrayerContext, loadPrimarySavedCity } from '../lib/primaryPrayerSource'
 import { getRamadanDay, getRamadanStatus, loadRamadanSettings } from '../lib/ramadan'
-import {
-  correctionsForSavedCity,
-  loadSavedCities,
-  loadTravelDestinationId,
-  settingsForSavedCity
-} from '../lib/savedCities'
 
 
 const fmtTime = (date: Date, timezone?: string) => {
@@ -37,10 +29,7 @@ const msUntilNextMidnight = () => {
 export default function Home({ go }: { go: (tab: Screen) => void }) {
   const [language] = useState<AppLanguage>(() => loadLanguage())
   const [hijri, setHijri] = useState(() => formatHijri(new Date(), language))
-  const [savedCity] = useState(() => {
-    const cityId = loadTravelDestinationId()
-    return loadSavedCities().find((city) => city.id === cityId) ?? null
-  })
+  const [savedCity] = useState(loadPrimarySavedCity)
   const [locationLabel, setLocationLabel] = useState('Location not available')
   const [prayerWindow, setPrayerWindow] = useState<PrayerWindow | null>(null)
   const [nextAt, setNextAt] = useState<string>('') // human local time for next prayer
@@ -72,54 +61,17 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
   }, [language])
   
 
-  // compute next prayer from current location
+  // Compute the active prayer source selected in Settings.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        if (savedCity) {
-          const calculated = computePrayerTimes(
-            { latitude: savedCity.latitude, longitude: savedCity.longitude },
-            new Date(),
-            settingsForSavedCity(savedCity)
-          )
-          const times = applyCorrections(calculated, correctionsForSavedCity(savedCity))
-          const window = getPrayerWindow(times)
-          if (cancelled) return
-          setLocationLabel(formatSavedCityLabel(savedCity))
-          setPrayerWindow(window)
-          setNextAt(fmtTime(window.nextTime, savedCity.timezone))
-          return
-        }
-
-        const locState = await refreshDeviceLocation()
-        if (!locState.location || cancelled) return
-
-        const latitude = locState.location.latitude
-        const longitude = locState.location.longitude
-
-        try {
-          const resolved = await reverseGeocodeCoordinates(latitude, longitude)
-          if (!cancelled) {
-            setLocationLabel(resolved.label)
-            saveCachedLocation({
-              ...locState.location,
-              city: resolved.city,
-              country: resolved.country,
-              countryCode: resolved.countryCode
-            })
-          }
-        } catch {
-          if (!cancelled) setLocationLabel(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
-        }
-
-        const pt = computePrayerTimes({
-          latitude,
-          longitude
-        })
-        const window = getPrayerWindow(pt)
+        const context = await getPrimaryPrayerContext()
+        if (cancelled) return
+        const window = getPrayerWindow(context.times, new Date(), context.nextFajr)
+        setLocationLabel(context.locationLabel)
         setPrayerWindow(window)
-        setNextAt(fmtTime(window.nextTime))
+        setNextAt(fmtTime(window.nextTime, context.savedCity?.timezone))
       } catch {
         if (!cancelled) setLocationLabel('Location not available')
         // silently ignore; UI will show dashes
@@ -208,11 +160,6 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
   )
 }
 
-function formatSavedCityLabel(city: ReturnType<typeof loadSavedCities>[number]) {
-  const cityName = city.name || city.city || 'Saved location'
-  return city.country ? `${cityName}, ${city.country}` : cityName
-}
-
 type PrayerWindow = {
   currentName: string
   currentTime: Date
@@ -220,7 +167,7 @@ type PrayerWindow = {
   nextTime: Date
 }
 
-function getPrayerWindow(times: ReturnType<typeof computePrayerTimes>, now = new Date()): PrayerWindow {
+function getPrayerWindow(times: PrayerTimesShape, now = new Date(), nextFajr?: Date): PrayerWindow {
   const prayers = [
     { name: 'Fajr', time: times.fajr },
     { name: 'Dhuhr', time: times.dhuhr },
@@ -249,8 +196,16 @@ function getPrayerWindow(times: ReturnType<typeof computePrayerTimes>, now = new
     currentName: 'Isha',
     currentTime: times.isha,
     nextName: 'Fajr',
-    nextTime: new Date(times.fajr.getTime() + 24 * 60 * 60 * 1000)
+    nextTime: nextFajr ?? new Date(times.fajr.getTime() + 24 * 60 * 60 * 1000)
   }
+}
+
+type PrayerTimesShape = {
+  fajr: Date
+  dhuhr: Date
+  asr: Date
+  maghrib: Date
+  isha: Date
 }
 
 function getPrayerProgress(window: PrayerWindow | null) {

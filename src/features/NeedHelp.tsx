@@ -161,10 +161,51 @@ export default function NeedHelp({ go, backTarget = 'Credits' }: Props) {
             <span className="font-semibold text-teal-300">Manual corrections:</span> Personal Custom Profiles store
             minute offsets, such as Fajr +4 or Isha +5. They do not overwrite the built-in country defaults.
           </p>
+          <div id="manual-timetable" className="space-y-3 rounded-lg border border-teal-900 bg-teal-950/20 p-4">
+            <h3 className="font-semibold text-teal-300">Import a local yearly prayer timetable</h3>
+            <p>
+              Use this when your local mosques follow an established printed timetable that does not match any
+              built-in calculation method. City Mode keeps the imported file on this device and reuses its
+              Gregorian month-and-day times each year.
+            </p>
+            <ol className="list-decimal space-y-2 pl-5 text-gray-200">
+              <li>Take a clear, straight photo of every monthly table in the official local prayer calendar.</li>
+              <li>Send the photos to ChatGPT or another trusted AI tool and ask it to create one Excel .xlsx file.</li>
+              <li>
+                Make sure the workbook has at least 300 dated rows and these columns:
+                Date, Fajr, Sunrise, Dhuhr or Zuhar, Asr, Maghrib, and Isha. Separate Asr Shafi/Asr Hanafi and
+                Isha Shafi/Isha Hanafi columns are also supported.
+              </li>
+              <li>Open More → City Mode, create or select a city profile, then tap Import Excel Timetable.</li>
+              <li>Rename the profile clearly, for example Main Chennai or Outer Chennai, and save it.</li>
+              <li>
+                Open Settings → Primary prayer time source and choose that City Mode profile. It will override
+                device-location calculations on both Home and Prayer Times.
+              </li>
+              <li>In Masjid Mode, link the same City Mode profile, then store that masjid’s separate Iqama and Jumu’ah schedule.</li>
+            </ol>
+            <div className="rounded-md bg-gray-950/70 p-3">
+              <p className="text-xs font-semibold uppercase text-gray-400">Suggested AI prompt</p>
+              <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-gray-200">
+                Create an Excel .xlsx yearly Gregorian prayer timetable from these monthly prayer-calendar photos.
+                Use one row per date and the columns Date, Fajr, Sunrise, Dhuhr, Asr, Maghrib, and Isha. Preserve
+                every printed time exactly, include AM/PM or 24-hour times consistently, do not estimate missing
+                values, and flag any unreadable cells for me to verify. If the source has separate Shafi and Hanafi
+                times, use Asr Shafi, Asr Hanafi, Isha Shafi, and Isha Hanafi columns. Add all dates to a sheet named
+                All Days and save the result as an .xlsx file.
+              </p>
+            </div>
+            <p className="text-xs text-amber-200">
+              Always compare several imported dates with the original printed calendar before choosing the profile
+              as your primary source. Athan PWA validates the structure, but it cannot verify that an AI copied every
+              photographed number correctly.
+            </p>
+          </div>
           <p>
             <span className="font-semibold text-teal-300">Masjid and Iqama:</span> Local Iqama can load rules from a
-            saved masjid profile. Imported settings can be edited without changing the masjid profile unless you tap
-            Save Changes Back to Masjid.
+            saved masjid profile. A masjid can link to a City Mode Athan preset while keeping its own Iqama and
+            Jumu’ah data. Imported settings can be edited without changing the masjid profile unless you tap Save
+            Changes Back to Masjid.
           </p>
           <p>
             <span className="font-semibold text-teal-300">Backup, PWA, and privacy:</span> Backup and Restore exports

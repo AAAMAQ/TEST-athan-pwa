@@ -1,6 +1,23 @@
 import { getCountryPrayerConfig } from '../data/countryPrayerMethods'
-import type { HighLatKey, MadhabKey, MethodKey, PrayerSettings } from './prayer'
-import { DEFAULT_PRAYER_CORRECTIONS, normalizeCorrections, type PrayerTimeCorrections } from './prayerCorrections'
+import {
+  getManualPrayerTimes,
+  normalizeManualPrayerTimetable,
+  type ManualPrayerTimetable,
+  type ManualPrayerTimes
+} from './manualPrayerTimetable'
+import {
+  computePrayerTimes,
+  type HighLatKey,
+  type MadhabKey,
+  type MethodKey,
+  type PrayerSettings
+} from './prayer'
+import {
+  DEFAULT_PRAYER_CORRECTIONS,
+  applyCorrections,
+  normalizeCorrections,
+  type PrayerTimeCorrections
+} from './prayerCorrections'
 
 export type SavedCity = {
   id: string
@@ -11,11 +28,12 @@ export type SavedCity = {
   latitude: number
   longitude: number
   timezone?: string
-  calculationMode: 'auto' | 'manual-method' | 'custom-corrections'
+  calculationMode: 'auto' | 'manual-method' | 'custom-corrections' | 'manual-timetable'
   calculationMethod: MethodKey
   madhab: MadhabKey
   highLatitudeRule: HighLatKey
   manualCorrections?: PrayerTimeCorrections
+  manualTimetable?: ManualPrayerTimetable
   notes?: string
   createdAt: string
   updatedAt: string
@@ -61,6 +79,7 @@ export function createSavedCity(input?: Partial<SavedCity>): SavedCity {
     madhab: input?.madhab || config.defaultMadhab,
     highLatitudeRule: input?.highLatitudeRule || config.highLatitudeRule,
     manualCorrections: normalizeCorrections(input?.manualCorrections ?? DEFAULT_PRAYER_CORRECTIONS),
+    manualTimetable: normalizeManualPrayerTimetable(input?.manualTimetable),
     notes: input?.notes || '',
     createdAt: input?.createdAt || now,
     updatedAt: now
@@ -122,6 +141,21 @@ export function correctionsForSavedCity(city: SavedCity): PrayerTimeCorrections 
     : undefined
 }
 
+export function prayerTimesForSavedCity(city: SavedCity, date = new Date()): ManualPrayerTimes {
+  if (city.calculationMode === 'manual-timetable') {
+    const imported = getManualPrayerTimes(city.manualTimetable, date, city.madhab)
+    if (imported) return imported
+  }
+  return applyCorrections(
+    computePrayerTimes(
+      { latitude: city.latitude, longitude: city.longitude },
+      date,
+      settingsForSavedCity(city)
+    ),
+    correctionsForSavedCity(city)
+  )
+}
+
 export async function searchSavedCity(query: string): Promise<Partial<SavedCity>[]> {
   const trimmed = query.trim()
   if (!trimmed) return []
@@ -168,11 +202,16 @@ function normalizeSavedCity(value: unknown): SavedCity | null {
     latitude: Number.isFinite(latitude) ? latitude : 0,
     longitude: Number.isFinite(longitude) ? longitude : 0,
     timezone: typeof maybe.timezone === 'string' ? maybe.timezone : undefined,
-    calculationMode: maybe.calculationMode === 'manual-method' || maybe.calculationMode === 'custom-corrections' ? maybe.calculationMode : 'auto',
+    calculationMode: (
+      maybe.calculationMode === 'manual-method'
+      || maybe.calculationMode === 'custom-corrections'
+      || maybe.calculationMode === 'manual-timetable'
+    ) ? maybe.calculationMode : 'auto',
     calculationMethod: maybe.calculationMethod || config.defaultMethod,
     madhab: maybe.madhab || config.defaultMadhab,
     highLatitudeRule: maybe.highLatitudeRule || config.highLatitudeRule,
     manualCorrections: normalizeCorrections(maybe.manualCorrections ?? DEFAULT_PRAYER_CORRECTIONS),
+    manualTimetable: normalizeManualPrayerTimetable(maybe.manualTimetable),
     notes: typeof maybe.notes === 'string' ? maybe.notes : '',
     createdAt: typeof maybe.createdAt === 'string' ? maybe.createdAt : now,
     updatedAt: typeof maybe.updatedAt === 'string' ? maybe.updatedAt : now

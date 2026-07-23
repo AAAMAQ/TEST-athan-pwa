@@ -69,6 +69,13 @@ export type IqamaDateRangeOptions = {
   settings: IqamaSettings
   includedPrayers: IqamaIncludedPrayers
   prayerSettings?: PrayerSettings
+  prayerTimesForDate?: (date: Date) => {
+    fajr: Date
+    dhuhr: Date
+    asr: Date
+    maghrib: Date
+    isha: Date
+  }
   includeJumuah?: boolean
   jumuahTime?: string
 }
@@ -327,7 +334,9 @@ export function getIqamaRowsForDateRange(options: IqamaDateRangeOptions): IqamaE
   const rows: IqamaExportRow[] = []
 
   for (const day of eachLocalDate(from, to)) {
-    const prayerTimes = computePrayerTimes(options.coords, day, prayerSettings)
+    const prayerTimes = options.prayerTimesForDate
+      ? options.prayerTimesForDate(day)
+      : computePrayerTimes(options.coords, day, prayerSettings)
     const athanDates: Record<IqamaPrayerName, Date> = {
       Fajr: prayerTimes.fajr,
       Dhuhr: prayerTimes.dhuhr,

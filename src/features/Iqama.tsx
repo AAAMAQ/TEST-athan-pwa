@@ -34,6 +34,7 @@ import {
   type JumuahReminderSettings
 } from '../lib/iqama'
 import { loadMasjidProfiles, updateMasjidProfile, type MasjidProfile } from '../lib/masjid'
+import { loadSavedCities, prayerTimesForSavedCity } from '../lib/savedCities'
 
 type Props = {
   go?: (screen: string) => void
@@ -64,9 +65,13 @@ function formatPrayerDate(date: Date) {
   })
 }
 
-function makeAthanTimesForIqama(coords: { latitude: number; longitude: number }, date: Date): AthanTimesForIqama {
-  const prayerTimes = computePrayerTimes(coords, date)
-
+function makeAthanTimesForIqama(prayerTimes: {
+  fajr: Date
+  dhuhr: Date
+  asr: Date
+  maghrib: Date
+  isha: Date
+}): AthanTimesForIqama {
   return {
     Fajr: formatPrayerDate(prayerTimes.fajr),
     Dhuhr: formatPrayerDate(prayerTimes.dhuhr),
@@ -177,6 +182,7 @@ export default function Iqama({ go }: Props) {
   const [downloadStatus, setDownloadStatus] = useState('')
   const [savedMessage, setSavedMessage] = useState('')
   const [masjidProfiles, setMasjidProfiles] = useState<MasjidProfile[]>(() => loadMasjidProfiles())
+  const [savedCities] = useState(loadSavedCities)
   const [selectedMasjidId, setSelectedMasjidId] = useState('')
 
   useEffect(() => {
@@ -192,7 +198,7 @@ export default function Iqama({ go }: Props) {
           longitude: location.location.longitude
         }
 
-        const todayAthanTimes = makeAthanTimesForIqama(coords, date)
+        const todayAthanTimes = makeAthanTimesForIqama(computePrayerTimes(coords, date))
         if (cancelled) return
 
         setCoords(coords)
@@ -218,6 +224,8 @@ export default function Iqama({ go }: Props) {
 
   const fromDateObject = useMemo(() => parseDateInput(fromDate), [fromDate])
   const toDateObject = useMemo(() => parseDateInput(toDate), [toDate])
+  const selectedMasjid = masjidProfiles.find((profile) => profile.id === selectedMasjidId) ?? null
+  const selectedMasjidCity = savedCities.find((city) => city.id === selectedMasjid?.cityProfileId) ?? null
 
   const exportRows = useMemo(() => {
     if (!coords) return []
@@ -229,12 +237,14 @@ export default function Iqama({ go }: Props) {
       settings,
       includedPrayers,
       includeJumuah: jumuahReminder.include,
-      jumuahTime: jumuahReminder.time
+      jumuahTime: jumuahReminder.time,
+      prayerTimesForDate: selectedMasjidCity
+        ? (day) => prayerTimesForSavedCity(selectedMasjidCity, day)
+        : undefined
     })
-  }, [coords, fromDateObject, includedPrayers, jumuahReminder.include, jumuahReminder.time, settings, toDateObject])
+  }, [coords, fromDateObject, includedPrayers, jumuahReminder.include, jumuahReminder.time, selectedMasjidCity, settings, toDateObject])
 
   const includedPrayerNames = IQAMA_PRAYERS.filter((prayer) => includedPrayers[prayer])
-  const selectedMasjid = masjidProfiles.find((profile) => profile.id === selectedMasjidId) ?? null
 
 function goBack() {
   if (go) {
@@ -265,7 +275,13 @@ function goBack() {
       imported[prayer] = rule.mode === 'fixed' ? makeFixedRule(rule.fixedTime) : makeOffsetRule(rule.offsetMinutes)
     }
     setSettings(imported)
-    setSavedMessage(`Loaded Iqama rules from ${selectedMasjid.name || 'saved masjid'}. Edit freely, then save if needed.`)
+    if (selectedMasjidCity) {
+      const cityTimes = prayerTimesForSavedCity(selectedMasjidCity, date)
+      setCoords({ latitude: selectedMasjidCity.latitude, longitude: selectedMasjidCity.longitude })
+      setAthanTimes(makeAthanTimesForIqama(cityTimes))
+      setStatus(`Using ${selectedMasjidCity.name || selectedMasjidCity.city} from City Mode as this masjid's Athan source.`)
+    }
+    setSavedMessage(`Loaded Iqama rules from ${selectedMasjid.name || 'saved masjid'}${selectedMasjidCity ? ` with ${selectedMasjidCity.name || selectedMasjidCity.city} Athan times` : ''}. Edit freely, then save if needed.`)
   }
 
   function saveBackToMasjid() {
@@ -336,7 +352,10 @@ function goBack() {
         settings,
         includedPrayers,
         includeJumuah: jumuahReminder.include,
-        jumuahTime: jumuahReminder.time
+        jumuahTime: jumuahReminder.time,
+        prayerTimesForDate: selectedMasjidCity
+          ? (day) => prayerTimesForSavedCity(selectedMasjidCity, day)
+          : undefined
       })
       setDownloadStatus(`Downloaded ${exportRows.length} calendar events.`)
     } catch (error) {

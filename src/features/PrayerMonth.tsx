@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { refreshDeviceLocation } from '../lib/locationStore'
-import { computePrayerTimes } from '../lib/prayer'
+import { computePrayerTimes, loadSettings } from '../lib/prayer'
+import { formatSavedCityLabel, loadPrimarySavedCity } from '../lib/primaryPrayerSource'
+import { prayerTimesForSavedCity } from '../lib/savedCities'
 
 const PRAYERS = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const
 type PrayerName = typeof PRAYERS[number]
@@ -17,22 +19,25 @@ export default function PrayerMonth() {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [savedCity] = useState(loadPrimarySavedCity)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError('')
     ;(async () => {
-      const location = await refreshDeviceLocation()
-      if (!location.location) throw new Error('Location unavailable')
+      const location = savedCity ? null : await refreshDeviceLocation()
+      if (!savedCity && !location?.location) throw new Error('Location unavailable')
       const results: Row[] = []
       const daysInMonth = new Date(year, month + 1, 0).getDate()
       for (let day = 1; day <= daysInMonth; day += 1) {
         const date = new Date(year, month, day)
-        const times = computePrayerTimes({
-          latitude: location.location.latitude,
-          longitude: location.location.longitude
-        }, date)
+        const times = savedCity
+          ? prayerTimesForSavedCity(savedCity, date)
+          : computePrayerTimes({
+            latitude: location!.location!.latitude,
+            longitude: location!.location!.longitude
+          }, date, loadSettings())
         results.push({
           date: day,
           Fajr: formatTime(times.fajr),
@@ -54,7 +59,7 @@ export default function PrayerMonth() {
     return () => {
       cancelled = true
     }
-  }, [month, year])
+  }, [month, savedCity, year])
 
   const monthName = new Date(2000, month, 1).toLocaleString([], { month: 'long' })
   const previousMonth = () => {
@@ -79,6 +84,9 @@ export default function PrayerMonth() {
       <header className="px-1">
         <p className="text-xs font-semibold uppercase text-teal-400">Monthly Timetable</p>
         <h2 className="mt-1 text-2xl font-bold text-white">{monthName} {year}</h2>
+        <p className={`mt-1 text-xs ${savedCity ? 'font-semibold text-teal-300' : 'text-gray-500'}`}>
+          {savedCity ? `Saved City: ${formatSavedCityLabel(savedCity)}` : 'Current device location'}
+        </p>
       </header>
 
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-700 bg-gray-800 p-3">

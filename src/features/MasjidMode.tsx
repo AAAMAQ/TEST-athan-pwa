@@ -9,6 +9,7 @@ import {
   type MasjidIqamaRule,
   type MasjidProfile
 } from '../lib/masjid'
+import { loadSavedCities } from '../lib/savedCities'
 
 type Props = {
   go?: (screen: string) => void
@@ -18,6 +19,7 @@ export default function MasjidMode({ go }: Props) {
   const [profiles, setProfiles] = useState<MasjidProfile[]>(() => loadMasjidProfiles())
   const [selectedId, setSelectedId] = useState<string>(() => profiles[0]?.id ?? '')
   const [message, setMessage] = useState('')
+  const [savedCities] = useState(loadSavedCities)
 
   const selected = useMemo(() => {
     return profiles.find((profile) => profile.id === selectedId) ?? profiles[0] ?? null
@@ -53,6 +55,19 @@ export default function MasjidMode({ go }: Props) {
   function updateField<K extends keyof MasjidProfile>(key: K, value: MasjidProfile[K]) {
     if (!selected) return
     setSelected({ ...selected, [key]: value })
+  }
+
+  function linkCityProfile(cityProfileId: string) {
+    if (!selected) return
+    const city = savedCities.find((profile) => profile.id === cityProfileId)
+    setSelected({
+      ...selected,
+      cityProfileId: city?.id,
+      city: city ? (city.name || city.city) : selected.city
+    })
+    setMessage(city
+      ? `Linked ${city.name || city.city} as this masjid's Athan source.`
+      : 'Masjid returned to an unlinked city note.')
   }
 
   function updateIqamaRule(prayer: IqamaPrayerName, nextRule: Partial<MasjidIqamaRule>) {
@@ -152,6 +167,31 @@ export default function MasjidMode({ go }: Props) {
               <input value={selected.city} onChange={(event) => updateField('city', event.target.value)} className="w-full rounded bg-gray-900 border border-gray-700 px-3 py-2" />
             </label>
           </div>
+
+          <label className="block space-y-1 text-sm">
+            <span className="font-semibold">City Mode Athan source</span>
+            <select
+              value={selected.cityProfileId || ''}
+              onChange={(event) => linkCityProfile(event.target.value)}
+              className="w-full rounded bg-gray-900 border border-gray-700 px-3 py-2"
+            >
+              <option value="">No linked City Mode profile</option>
+              {savedCities.map((city) => (
+                <option key={city.id} value={city.id}>
+                  {city.name || city.city || 'Unnamed city'} · {city.calculationMode === 'manual-timetable' ? 'Imported timetable' : city.calculationMethod}
+                </option>
+              ))}
+            </select>
+            <span className="block text-xs leading-5 text-gray-400">
+              Link the Athan timetable used for this masjid. Iqama rules remain stored separately in Masjid Mode.
+            </span>
+          </label>
+
+          {selected.cityProfileId && (
+            <div className="rounded-md border border-teal-900 bg-teal-950/30 p-3 text-xs text-teal-100">
+              Linked City Mode preset: {savedCities.find((city) => city.id === selected.cityProfileId)?.name || selected.city}
+            </div>
+          )}
 
           <label className="block space-y-1 text-sm">
             <span className="font-semibold">Address or short location note</span>

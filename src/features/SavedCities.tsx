@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import { COUNTRY_PRAYER_CONFIGS, getCountryPrayerConfig } from '../data/countryPrayerMethods'
 import { buildIcsForDates, downloadICS } from '../lib/ics'
-import { computePrayerTimes, type HighLatKey, type MadhabKey, type MethodKey } from '../lib/prayer'
+import { parseManualPrayerTimetableFile } from '../lib/manualPrayerTimetable'
+import { type HighLatKey, type MadhabKey, type MethodKey } from '../lib/prayer'
 import {
   DEFAULT_PRAYER_CORRECTIONS,
   PRAYER_CORRECTION_KEYS,
-  applyCorrections,
   formatSignedCorrection,
   normalizeCorrectionMinutes,
   type PrayerTimeCorrections
@@ -16,6 +16,7 @@ import {
   deleteSavedCity,
   loadSavedCities,
   loadTravelDestinationId,
+  prayerTimesForSavedCity,
   searchSavedCity,
   setTravelDestinationId,
   settingsForSavedCity,
@@ -92,13 +93,59 @@ export default function SavedCities({ go }: Props) {
     if (!selected) return
     setTravelDestinationId(selected.id)
     setTravelId(selected.id)
-    setMessage(`${selected.name || selected.city} is now your travel destination.`)
+    setMessage(`${selected.name || selected.city} is now the primary prayer time source for Home and Prayer Times.`)
   }
 
   function clearTravel() {
     setTravelDestinationId('')
     setTravelId('')
-    setMessage('Travel destination cleared. Use current device location for live features.')
+    setMessage('Primary prayer source reset to the current device location.')
+  }
+
+  async function importTimetable(file: File | undefined) {
+    if (!selected || !file) return
+    try {
+      setMessage('Reading and validating the yearly prayer timetable…')
+      const manualTimetable = await parseManualPrayerTimetableFile(file)
+      const locationParts = manualTimetable.sourceLocation?.split(',').map((part) => part.trim()).filter(Boolean) ?? []
+      const importedCountry = locationParts.at(-1) || selected.country
+      const importedCity = locationParts[0] || selected.city
+      const countryConfig = COUNTRY_PRAYER_CONFIGS.find((item) => item.countryName.toLowerCase() === importedCountry.toLowerCase())
+      const updated: SavedCity = {
+        ...selected,
+        calculationMode: 'manual-timetable',
+        manualTimetable,
+        name: selected.name === 'Manual City' && importedCity
+          ? importedCity
+          : selected.name,
+        city: importedCity,
+        country: importedCountry,
+        countryCode: countryConfig?.countryCode || selected.countryCode,
+        latitude: manualTimetable.sourceLatitude ?? selected.latitude,
+        longitude: manualTimetable.sourceLongitude ?? selected.longitude
+      }
+      const next = upsertSavedCity(updated, cities)
+      setCities(next)
+      setSelectedId(updated.id)
+      setMessage(`Imported ${manualTimetable.rowCount} Gregorian dates from ${manualTimetable.sourceSheetName}. This profile now uses the Excel timetable.`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'The Excel timetable could not be imported.')
+    }
+  }
+
+  function duplicateSelected() {
+    if (!selected) return
+    const copy = createSavedCity({
+      ...selected,
+      id: undefined,
+      name: `${selected.name || selected.city || 'City'} copy`,
+      createdAt: undefined,
+      updatedAt: undefined
+    })
+    const next = upsertSavedCity(copy, cities)
+    setCities(next)
+    setSelectedId(copy.id)
+    setMessage('City profile duplicated. Rename it to describe the local timetable or area.')
   }
 
   function updateCorrection(key: keyof PrayerTimeCorrections, value: number) {
@@ -143,7 +190,7 @@ export default function SavedCities({ go }: Props) {
     <div className="max-w-5xl mx-auto p-4 space-y-6">
       <header className="text-center space-y-2">
         <h1 className="text-2xl font-bold">City Mode</h1>
-        <p className="text-sm text-gray-300">Save travel locations, preview prayer times, apply country defaults, and export timetables.</p>
+        <p className="text-sm text-gray-300">Save multiple city presets, apply corrections or imported yearly timetables, and choose a primary prayer source.</p>
       </header>
 
       <section className="rounded-lg bg-gray-800 p-4 space-y-3">
@@ -174,7 +221,7 @@ export default function SavedCities({ go }: Props) {
             {cities.map((city) => (
               <button key={city.id} type="button" onClick={() => setSelectedId(city.id)} className={`rounded border p-3 text-left ${selected?.id === city.id ? 'border-teal-400 bg-teal-900/40' : 'border-gray-700 bg-gray-900 hover:bg-gray-700'}`}>
                 <div className="font-semibold">{city.name || city.city || 'Unnamed city'}</div>
-                <div className="text-xs text-gray-400">{city.countryCode} · {city.calculationMode}{travelId === city.id ? ' · Travel destination' : ''}</div>
+                <div className="text-xs text-gray-400">{city.countryCode} · {city.calculationMode}{travelId === city.id ? ' · Primary prayer source' : ''}</div>
               </button>
             ))}
           </div>
@@ -193,6 +240,7 @@ export default function SavedCities({ go }: Props) {
                 const config = getCountryPrayerConfig(event.target.value)
                 updateSelected({ ...selected, countryCode: config.countryCode, country: config.countryName, calculationMethod: config.defaultMethod, madhab: config.defaultMadhab, highLatitudeRule: config.highLatitudeRule })
               }} className="w-full rounded bg-gray-900 border border-gray-700 px-3 py-2">
+                <option value="ZZ">Choose a country</option>
                 {COUNTRY_PRAYER_CONFIGS.map((item) => <option key={item.countryCode} value={item.countryCode}>{item.countryName}</option>)}
               </select>
             </label>
@@ -211,11 +259,47 @@ export default function SavedCities({ go }: Props) {
                 <option value="auto">Auto country defaults</option>
                 <option value="manual-method">Manual method</option>
                 <option value="custom-corrections">Manual method + corrections</option>
+                <option value="manual-timetable" disabled={!selected.manualTimetable}>Imported yearly Excel timetable</option>
               </select>
             </label>
             <SelectField label="Method" value={selected.calculationMethod} options={METHODS} onChange={(value) => updateSelected({ ...selected, calculationMethod: value as MethodKey, calculationMode: selected.calculationMode === 'custom-corrections' ? 'custom-corrections' : 'manual-method' })} />
             <SelectField label="Madhab" value={selected.madhab} options={MADHABS} onChange={(value) => updateSelected({ ...selected, madhab: value as MadhabKey, calculationMode: selected.calculationMode === 'custom-corrections' ? 'custom-corrections' : 'manual-method' })} />
             <SelectField label="High latitude" value={selected.highLatitudeRule} options={HIGHLATS} onChange={(value) => updateSelected({ ...selected, highLatitudeRule: value as HighLatKey, calculationMode: selected.calculationMode === 'custom-corrections' ? 'custom-corrections' : 'manual-method' })} />
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-900 p-4">
+            <div>
+              <h3 className="font-semibold">Manual yearly prayer timetable</h3>
+              <p className="mt-1 text-xs leading-5 text-gray-400">
+                Import an .xlsx calendar when local mosque times differ from built-in calculation methods. The file is read only on this device and is never uploaded.
+              </p>
+            </div>
+            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-md border border-teal-800 bg-teal-950/40 px-4 text-sm font-semibold text-teal-200 hover:bg-teal-900/50">
+              Import Excel Timetable
+              <input
+                type="file"
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                className="sr-only"
+                onChange={(event) => {
+                  void importTimetable(event.target.files?.[0])
+                  event.target.value = ''
+                }}
+              />
+            </label>
+            {selected.manualTimetable && (
+              <div className="rounded-md bg-gray-950/70 p-3 text-xs leading-5 text-gray-300">
+                <p className="font-semibold text-teal-300">Imported timetable active</p>
+                <p>{selected.manualTimetable.sourceFileName} · {selected.manualTimetable.rowCount} dates</p>
+                <p>Sheet: {selected.manualTimetable.sourceSheetName}{selected.manualTimetable.sourceLocation ? ` · ${selected.manualTimetable.sourceLocation}` : ''}</p>
+                <button
+                  type="button"
+                  onClick={() => updateSelected({ ...selected, calculationMode: 'auto', manualTimetable: undefined })}
+                  className="mt-2 rounded-md border border-red-900 px-3 py-2 font-semibold text-red-200"
+                >
+                  Remove Imported Timetable
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -260,8 +344,9 @@ export default function SavedCities({ go }: Props) {
 
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={saveSelected} className="rounded bg-teal-600 hover:bg-teal-500 px-3 py-2 font-semibold">Save City</button>
-            <button type="button" onClick={markTravel} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 font-semibold">Use Saved City</button>
+            <button type="button" onClick={markTravel} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 font-semibold">Use as Primary Prayer Source</button>
             <button type="button" onClick={clearTravel} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 font-semibold">Use Current Device Location</button>
+            <button type="button" onClick={duplicateSelected} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 font-semibold">Duplicate Profile</button>
             <button type="button" onClick={exportIcs} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 font-semibold">Export Athan ICS</button>
             <button type="button" onClick={exportCsv} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 font-semibold">Export CSV</button>
             <button type="button" onClick={shareText} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 font-semibold">Share Text</button>
@@ -277,11 +362,10 @@ export default function SavedCities({ go }: Props) {
 }
 
 function makeRows(city: SavedCity, from: Date, to: Date) {
-  const settings = settingsForSavedCity(city)
   const rows = []
   const current = new Date(from)
   while (current <= to) {
-    const times = applyCorrections(computePrayerTimes({ latitude: city.latitude, longitude: city.longitude }, current, settings), correctionsForSavedCity(city))
+    const times = prayerTimesForSavedCity(city, current)
     rows.push({ date: formatDate(current), times })
     current.setDate(current.getDate() + 1)
   }
@@ -295,7 +379,11 @@ function timetableOptions(city: SavedCity, fromDate: string, toDate: string) {
     fromDate: parseDate(fromDate),
     toDate: parseDate(toDate),
     settings: settingsForSavedCity(city),
-    corrections: correctionsForSavedCity(city)
+    corrections: correctionsForSavedCity(city),
+    prayerTimesForDate: (date: Date) => prayerTimesForSavedCity(city, date),
+    sourceDescription: city.calculationMode === 'manual-timetable'
+      ? `Imported yearly timetable (${city.manualTimetable?.sourceFileName || 'Excel'})`
+      : undefined
   }
 }
 
