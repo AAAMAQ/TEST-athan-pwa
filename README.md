@@ -59,9 +59,33 @@ https://github.com/AAAMAQ/TEST-athan-pwa
 
 ## Current Version
 
-**v2.01.1**
+**v3.2.2**
 
-This version includes Advanced Athan, improved calendar reminder exports, Dev Notes, updated help information, and cleaner public release links.
+This version fixes inconsistent Android Qibla headings by using only absolute, North-referenced compass data. It also
+retains Excel, CSV, and JSON yearly timetable imports, shared prayer sources, City and Masjid profiles, Quran reading,
+Salah tracking, calendar exports, and local-first privacy controls.
+
+---
+
+## Unified UI and Navigation
+
+Athan PWA uses one responsive navy-and-teal interface across the installed PWA and browser experience. Shared cards,
+buttons, headings, status messages, and back navigation keep Home, Prayer Times, Settings, Qibla, Quran, and the
+advanced tools visually connected.
+
+The primary navigation stays focused on three destinations:
+
+- **Home** shows the Hijri date, current prayer, next prayer countdown, active location or City Mode source, and quick access to Quran, Qibla, More, and Credits.
+- **Prayer** shows daily and monthly prayer times from the same primary prayer source selected in Settings.
+- **Settings** controls calculation defaults, language, reminders, display preferences, and the primary prayer source used throughout the app.
+
+Secondary features live under **More**, including Deep Search Athan, Iqama Times, Masjid Mode, City Mode, Salah
+Tracker, Ramadan Mode, backup and restore, and the App Guide. Secondary screens share the same header and Back
+behavior, while the bottom navigation remains available for returning to the three primary areas.
+
+Qibla follows this unified approach with Simple and Advanced views. Both use the same location-derived Ka‘bah bearing
+and verified compass pipeline: iPhone uses its dedicated browser compass heading, supported Android browsers use
+absolute device orientation, and relative-only motion readings are rejected rather than displayed as North.
 
 ---
 
@@ -125,6 +149,10 @@ Location is used only for prayer-time and Qibla-related features.
 ### Qibla Direction
 
 The Qibla screen helps users find the direction of the Kaaba.
+
+Simple Mode provides turn guidance, alignment feedback, distance, and an optional vibration when aligned. Advanced
+Mode exposes the numeric Qibla bearing and verified device heading. The app accepts iPhone compass headings and
+absolute Android orientation readings; arbitrary relative Android motion angles are not treated as North.
 
 Qibla accuracy may vary depending on:
 
@@ -490,7 +518,6 @@ Our motto is:
 May Allah accept it, make it beneficial, and allow it to help people remember their prayers on time.
 
 ---
-
 
 
 

@@ -38,7 +38,7 @@ export default function NeedHelp({ go, backTarget = 'Credits' }: Props) {
         <a href="#downloadics" className="underline">Download and Set reminders via Calendar (.ics)</a>
         <a href="#whatsnew" className="underline">What&apos;s new?</a>
         <a href="#qibla" className="underline">Qibla not accurate?</a>
-        <a href="#v3features" className="underline">v3.2.1 features</a>
+        <a href="#v3features" className="underline">v3.2.2 features</a>
         <a href="#quran" className="underline">How to use the Quran</a>
         <a href="#bookmarks" className="underline">Quran bookmarks</a>
         <a href="#location" className="underline">Location & accuracy</a>
@@ -138,13 +138,13 @@ export default function NeedHelp({ go, backTarget = 'Credits' }: Props) {
       </section>
 
       <section id="v3features" className="space-y-2">
-        <h2 className="text-xl font-semibold">v3.2.1 feature guide</h2>
+        <h2 className="text-xl font-semibold">v3.2.2 feature guide</h2>
         <div className="space-y-3 text-sm text-gray-200">
           <p>
             <span className="font-semibold text-teal-300">Qibla:</span> Simple Mode gives a large readable compass,
             turn guidance, Qibla bearing, device heading, distance to the Ka‘bah, and optional haptic feedback.
-            Advanced Mode keeps the older numeric compass view. If the compass feels wrong, use the calibration tips
-            below and check motion/orientation permission.
+            Android now uses only Earth-referenced absolute orientation, while iPhone continues to use its dedicated
+            compass heading. Relative motion values are rejected instead of being displayed as North.
           </p>
           <p>
             <span className="font-semibold text-teal-300">Quran:</span> Continue Reading, recently read, per-Surah
@@ -300,6 +300,12 @@ export default function NeedHelp({ go, backTarget = 'Credits' }: Props) {
           location to the Kaaba, for example: <span className="italic">“🕋 257° from True North”</span>. The arrow
           on the screen is rotated to this angle. To face the Qibla, you align your body so that the 
           <span className="font-semibold"> top of your phone</span> or the arrow is pointing in that direction.
+        </p>
+        <p className="rounded-lg border border-teal-900 bg-teal-950/20 p-3 text-sm text-gray-200">
+          Athan PWA accepts only an absolute, North-referenced compass heading. On iPhone this normally comes from
+          Safari&apos;s compass heading; on supported Android browsers it comes from the absolute orientation event.
+          If a browser supplies only relative motion data, the app keeps showing the numeric Qibla bearing but does
+          not present that relative value as a real heading.
         </p>
 
         <h3 className="font-semibold text-teal-300 text-sm mt-2">Common reasons for inaccuracy</h3>
@@ -887,6 +893,7 @@ type QiblaStoredStatus = {
   locationStatus?: string
   bearing?: number
   heading?: number | null
+  headingSource?: 'ios-compass' | 'absolute-orientation' | null
   aligned?: boolean
 }
 
@@ -928,6 +935,7 @@ function QiblaStatusPanel() {
         <StatusLine label="Location permission" value={status?.locationStatus ?? locationPermission} />
         <StatusLine label="Bearing to Ka‘bah" value={typeof status?.bearing === 'number' ? `${status.bearing.toFixed(1)}°` : 'Open Qibla to calculate'} />
         <StatusLine label="Current heading" value={typeof status?.heading === 'number' ? `${status.heading.toFixed(0)}°` : 'Waiting for compass'} />
+        <StatusLine label="Heading source" value={formatQiblaHeadingSource(status?.headingSource)} />
       </div>
       <div className="space-y-1 text-gray-300">
         <p>Move your phone in a figure-eight motion to improve compass calibration.</p>
@@ -936,6 +944,12 @@ function QiblaStatusPanel() {
       </div>
     </div>
   )
+}
+
+function formatQiblaHeadingSource(source: QiblaStoredStatus['headingSource']) {
+  if (source === 'ios-compass') return 'iPhone compass'
+  if (source === 'absolute-orientation') return 'Absolute device orientation'
+  return 'No absolute heading recorded'
 }
 
 function StatusLine({ label, value }: { label: string; value: string }) {

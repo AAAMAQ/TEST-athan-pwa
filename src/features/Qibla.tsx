@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { refreshDeviceLocation, reverseGeocodeCoordinates, saveCachedLocation } from '../lib/locationStore'
+import {
+  qiblaHeadingFromOrientation,
+  qiblaHeadingSourceLabel,
+  type QiblaHeadingSource
+} from '../lib/qiblaHeading'
 
 declare global {
   interface DeviceOrientationEvent {
@@ -24,6 +29,7 @@ const MODE_KEY = 'athan.qibla.mode.v1'
 const HAPTICS_KEY = 'athan.qibla.haptics.v1'
 const STATUS_KEY = 'athan.qibla.status.v1'
 const ALIGNMENT_THRESHOLD = 5
+const ABSOLUTE_COMPASS_TIMEOUT_MS = 4000
 
 function bearingToKaaba(lat: number, lon: number) {
   const phi1 = (lat * Math.PI) / 180
@@ -91,6 +97,9 @@ export default function Qibla({ go }: Props) {
   const [locationStatus, setLocationStatus] = useState<PermissionStatusText>('unknown')
   const [compassStatus, setCompassStatus] = useState<PermissionStatusText>('unknown')
   const [needsCompassPermission, setNeedsCompassPermission] = useState(false)
+  const [compassEnabled, setCompassEnabled] = useState(false)
+  const [headingSource, setHeadingSource] = useState<QiblaHeadingSource | null>(null)
+  const [compassDetail, setCompassDetail] = useState('Waiting for an absolute compass heading.')
   const alignedRef = useRef(false)
   const watchIdRef = useRef<number | null>(null)
 
@@ -187,21 +196,64 @@ export default function Qibla({ go }: Props) {
 
     if (!window.DeviceOrientationEvent) {
       setCompassStatus('unavailable')
+      setCompassDetail('Compass sensors are not available in this browser. Use the numeric Qibla bearing.')
       return
     }
 
-    if (!needsPermission) {
-      const onOrient = (event: DeviceOrientationEvent) => {
-        const next = headingFromOrientation(event)
-        if (next !== null) {
-          setHeading(next)
-          setCompassStatus('granted')
-        }
-      }
-      window.addEventListener('deviceorientation', onOrient)
-      return () => window.removeEventListener('deviceorientation', onOrient)
-    }
+    if (!needsPermission) setCompassEnabled(true)
   }, [])
+
+  useEffect(() => {
+    if (!compassEnabled) return
+
+    let receivedRelativeOnly = false
+    let bestSourcePriority = 0
+
+    const acceptReading = (
+      event: DeviceOrientationEvent,
+      eventType: 'deviceorientation' | 'deviceorientationabsolute'
+    ) => {
+      const reading = qiblaHeadingFromOrientation(event, eventType)
+      if (!reading) {
+        if (eventType === 'deviceorientation' && typeof event.alpha === 'number' && event.absolute !== true) {
+          receivedRelativeOnly = true
+        }
+        return
+      }
+
+      const sourcePriority = reading.source === 'ios-compass' ? 2 : 1
+      if (sourcePriority < bestSourcePriority) return
+      bestSourcePriority = sourcePriority
+      setHeading(reading.heading)
+      setHeadingSource(reading.source)
+      setCompassStatus('granted')
+      setCompassDetail(`${qiblaHeadingSourceLabel(reading.source)} ready. Hold the phone flat and away from magnets or metal.`)
+    }
+
+    const onOrientation = (event: DeviceOrientationEvent) => {
+      acceptReading(event, 'deviceorientation')
+    }
+    const onAbsoluteOrientation = (event: DeviceOrientationEvent) => {
+      acceptReading(event, 'deviceorientationabsolute')
+    }
+
+    window.addEventListener('deviceorientation', onOrientation)
+    window.addEventListener('deviceorientationabsolute', onAbsoluteOrientation)
+
+    const timeoutId = window.setTimeout(() => {
+      if (bestSourcePriority > 0) return
+      setCompassStatus('unavailable')
+      setCompassDetail(receivedRelativeOnly
+        ? 'This browser supplied only relative motion data, which cannot identify North. Try Chrome, Safari, or Samsung Internet with motion access enabled.'
+        : 'No absolute compass heading was received. Check motion/orientation access or try another supported browser.')
+    }, ABSOLUTE_COMPASS_TIMEOUT_MS)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      window.removeEventListener('deviceorientation', onOrientation)
+      window.removeEventListener('deviceorientationabsolute', onAbsoluteOrientation)
+    }
+  }, [compassEnabled])
 
   const turn = useMemo(() => {
     if (bearing === null || heading === null) return null
@@ -220,6 +272,7 @@ export default function Qibla({ go }: Props) {
       locationStatus,
       bearing,
       heading,
+      headingSource,
       aligned
     }
     try {
@@ -227,7 +280,7 @@ export default function Qibla({ go }: Props) {
     } catch {
       // Ignore status persistence failures.
     }
-  }, [aligned, bearing, compassStatus, heading, locationStatus, needsCompassPermission])
+  }, [aligned, bearing, compassStatus, heading, headingSource, locationStatus, needsCompassPermission])
 
   useEffect(() => {
     if (!haptics || !('vibrate' in navigator)) return
@@ -242,18 +295,17 @@ export default function Qibla({ go }: Props) {
     try {
       const permission = await window.DeviceOrientationEvent?.requestPermission?.()
       if (permission === 'granted') {
-        setCompassStatus('granted')
-        const onOrient = (event: DeviceOrientationEvent) => {
-          const next = headingFromOrientation(event)
-          if (next !== null) setHeading(next)
-        }
-        window.addEventListener('deviceorientation', onOrient)
+        setCompassStatus('unknown')
+        setCompassDetail('Motion access granted. Waiting for an absolute compass heading.')
+        setCompassEnabled(true)
       } else {
         setCompassStatus('denied')
+        setCompassDetail('Compass permission denied. You can still follow the numeric Qibla bearing.')
         setStatus('Compass permission denied. You can still follow the numeric Qibla bearing.')
       }
     } catch {
       setCompassStatus('denied')
+      setCompassDetail('Compass permission failed. Check motion/orientation permissions.')
       setStatus('Compass permission failed. Check motion/orientation permissions.')
     }
   }
@@ -263,6 +315,8 @@ export default function Qibla({ go }: Props) {
     if (go) go('NeedHelp')
     else window.location.hash = '#qibla'
   }
+
+  const displayStatus = locationStatus === 'denied' ? status : compassDetail
 
   return (
     <div className="mx-auto max-w-3xl p-2 space-y-4">
@@ -289,17 +343,17 @@ export default function Qibla({ go }: Props) {
         <SimpleQibla
           aligned={aligned}
           bearing={bearing}
-          compassStatus={compassStatus}
           distanceKm={distanceKm}
           enableCompass={enableCompass}
           haptics={haptics}
           heading={heading}
+          headingSource={headingSource}
           instruction={instruction}
           locationLabel={locationLabel}
           needsCompassPermission={needsCompassPermission}
           openQiblaHelp={openQiblaHelp}
           setHaptics={setHaptics}
-          status={status}
+          status={displayStatus}
           turn={turn}
         />
       ) : (
@@ -308,8 +362,9 @@ export default function Qibla({ go }: Props) {
           compassStatus={compassStatus}
           enableCompass={enableCompass}
           heading={heading}
+          headingSource={headingSource}
           needsCompassPermission={needsCompassPermission}
-          status={status}
+          status={displayStatus}
         />
       )}
     </div>
@@ -319,11 +374,11 @@ export default function Qibla({ go }: Props) {
 function SimpleQibla({
   aligned,
   bearing,
-  compassStatus,
   distanceKm,
   enableCompass,
   haptics,
   heading,
+  headingSource,
   instruction,
   locationLabel,
   needsCompassPermission,
@@ -334,11 +389,11 @@ function SimpleQibla({
 }: {
   aligned: boolean
   bearing: number | null
-  compassStatus: PermissionStatusText
   distanceKm: number | null
   enableCompass: () => void
   haptics: boolean
   heading: number | null
+  headingSource: QiblaHeadingSource | null
   instruction: { muted: string; strong: string }
   locationLabel: string
   needsCompassPermission: boolean
@@ -401,6 +456,7 @@ function SimpleQibla({
             {bearing !== null ? `Qibla ${bearing.toFixed(1)}°` : 'Qibla bearing loading'}
             {heading !== null ? ` · Heading ${heading.toFixed(0)}°` : ''}
           </p>
+          <p className="text-xs text-gray-500">{qiblaHeadingSourceLabel(headingSource)}</p>
           <p className="text-sm text-gray-400">
             {distanceKm !== null ? `${Math.round(distanceKm).toLocaleString()} km to the Ka‘bah` : 'Distance appears after location is available'}
           </p>
@@ -428,7 +484,7 @@ function SimpleQibla({
           </label>
 
           <p className="rounded bg-gray-900 p-3 text-xs text-gray-400">
-            {compassStatus === 'unavailable' ? 'Compass sensors are not available in this browser. Use the numeric bearing.' : status}
+            {status}
           </p>
         </div>
       </div>
@@ -441,6 +497,7 @@ function AdvancedQibla({
   compassStatus,
   enableCompass,
   heading,
+  headingSource,
   needsCompassPermission,
   status
 }: {
@@ -448,6 +505,7 @@ function AdvancedQibla({
   compassStatus: PermissionStatusText
   enableCompass: () => void
   heading: number | null
+  headingSource: QiblaHeadingSource | null
   needsCompassPermission: boolean
   status: string
 }) {
@@ -497,7 +555,8 @@ function AdvancedQibla({
           )}
 
           <p className="text-xs text-gray-400">
-            Compass status: {compassStatus}. Hold the device flat and away from metal; recalibrate compass if asked.
+            Compass status: {compassStatus} · {qiblaHeadingSourceLabel(headingSource)}.
+            Hold the device flat and away from metal; recalibrate compass if asked.
           </p>
           {status && <p className="text-xs text-amber-500">{status}</p>}
         </>
@@ -544,19 +603,6 @@ function QiblaNeedle({ className = '' }: { className?: string }) {
       />
     </svg>
   )
-}
-
-function headingFromOrientation(event: DeviceOrientationEvent) {
-  if (typeof event.webkitCompassHeading === 'number') {
-    return normalizeDeg(event.webkitCompassHeading)
-  }
-  if (event.absolute === true && typeof event.alpha === 'number') {
-    return normalizeDeg(360 - event.alpha)
-  }
-  if (typeof event.alpha === 'number') {
-    return normalizeDeg(360 - event.alpha)
-  }
-  return null
 }
 
 function makeInstruction(turn: number | null) {

@@ -1,5 +1,16 @@
 [
   {
+    "id": "2026-07-29-v3-2-2",
+    "date": "2026-07-29",
+    "version": "v3.2.2",
+    "title": "Reliable Android Qibla headings",
+    "summary": [
+      "Fixed inconsistent Android Qibla headings by listening for Earth-referenced absolute device orientation instead of treating each browser session's relative motion angle as North.",
+      "Preserved the dedicated iPhone compass path, added heading-source diagnostics, and now rejects relative-only readings so alignment guidance and haptics cannot be triggered by a false compass heading.",
+      "Added cross-platform heading regression tests, expanded Qibla troubleshooting guidance, and refreshed the README to document the unified navy-and-teal interface, three-tab navigation, More tools, and shared primary prayer source."
+    ]
+  },
+  {
     "id": "2026-07-24-v3-2-1",
     "date": "2026-07-24",
     "version": "v3.2.1",

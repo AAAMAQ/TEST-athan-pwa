@@ -115,7 +115,7 @@ export default function Credits({ go, backTarget }: Props) {
           <CreditRow label="Date of Current Version" value={formatDevNoteDate(ATHAN_RELEASE.updatedAt)} />
           <CreditRow
             label="Latest Update"
-            value="v3.2.1 expands private yearly timetable imports to Excel, CSV, and JSON while retaining the shared City Mode, Home, Prayer, Deep Search, and Masjid source workflow."
+            value="v3.2.2 fixes Android Qibla headings by accepting only absolute North-referenced orientation, adds compass-source diagnostics, and documents the unified app interface."
           />
           <CreditRow label="Company" value="BiG MAQ Studio" />
         </dl>
