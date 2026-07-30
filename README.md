@@ -59,11 +59,12 @@ https://github.com/AAAMAQ/TEST-athan-pwa
 
 ## Current Version
 
-**v3.2.2**
+**v3.2.3**
 
-This version fixes inconsistent Android Qibla headings by using only absolute, North-referenced compass data. It also
-retains Excel, CSV, and JSON yearly timetable imports, shared prayer sources, City and Masjid profiles, Quran reading,
-Salah tracking, calendar exports, and local-first privacy controls.
+This version rebuilds Android Qibla heading detection as a separate engine using verified absolute orientation,
+screen-aware quaternion calculations, source locking, and circular smoothing, while leaving the working iPhone
+compass path unchanged. It also uses the browser's real PWA installation prompt where supported, gives manual
+Add to Home Screen guidance elsewhere, and keeps Credits focused on sharing the app.
 
 ---
 
@@ -518,6 +519,5 @@ Our motto is:
 May Allah accept it, make it beneficial, and allow it to help people remember their prayers on time.
 
 ---
-
 
 

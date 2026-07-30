@@ -1,53 +1,36 @@
 import { describe, expect, it } from 'vitest'
-import { qiblaHeadingFromOrientation, qiblaHeadingSourceLabel } from './qiblaHeading'
+import {
+  isAppleMobilePlatform,
+  qiblaHeadingSourceLabel
+} from './qiblaHeading'
 
-describe('Qibla compass heading normalization', () => {
-  it('prefers the iPhone compass heading', () => {
-    expect(qiblaHeadingFromOrientation({
-      absolute: false,
-      alpha: 72,
-      webkitCompassHeading: 288
-    }, 'deviceorientation')).toEqual({
-      heading: 288,
-      source: 'ios-compass'
-    })
+describe('Qibla compass platform facade', () => {
+  it('recognizes iPhone and touch-enabled iPadOS platform signatures', () => {
+    expect(isAppleMobilePlatform({
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',
+      platform: 'iPhone',
+      maxTouchPoints: 5
+    })).toBe(true)
+
+    expect(isAppleMobilePlatform({
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15)',
+      platform: 'MacIntel',
+      maxTouchPoints: 5
+    })).toBe(true)
   })
 
-  it('converts an Android absolute orientation to a compass heading', () => {
-    expect(qiblaHeadingFromOrientation({
-      absolute: true,
-      alpha: 72
-    }, 'deviceorientationabsolute')).toEqual({
-      heading: 288,
-      source: 'absolute-orientation'
-    })
-  })
-
-  it('accepts an absolute reading delivered through the standard event', () => {
-    expect(qiblaHeadingFromOrientation({
-      absolute: true,
-      alpha: 350
-    }, 'deviceorientation')).toEqual({
-      heading: 10,
-      source: 'absolute-orientation'
-    })
-  })
-
-  it('rejects relative Android alpha values instead of presenting a false heading', () => {
-    expect(qiblaHeadingFromOrientation({
-      absolute: false,
-      alpha: 194
-    }, 'deviceorientation')).toBeNull()
-  })
-
-  it('rejects missing and non-finite sensor values', () => {
-    expect(qiblaHeadingFromOrientation({ absolute: true, alpha: null }, 'deviceorientationabsolute')).toBeNull()
-    expect(qiblaHeadingFromOrientation({ absolute: true, alpha: Number.NaN }, 'deviceorientationabsolute')).toBeNull()
+  it('keeps Android on its separate engine', () => {
+    expect(isAppleMobilePlatform({
+      userAgent: 'Mozilla/5.0 (Linux; Android 15; SM-S928B)',
+      platform: 'Linux armv8l',
+      maxTouchPoints: 5
+    })).toBe(false)
   })
 
   it('provides reader-facing source labels', () => {
     expect(qiblaHeadingSourceLabel('ios-compass')).toBe('iPhone compass')
-    expect(qiblaHeadingSourceLabel('absolute-orientation')).toBe('Absolute device orientation')
+    expect(qiblaHeadingSourceLabel('android-absolute-sensor')).toBe('Android magnetic North sensor')
+    expect(qiblaHeadingSourceLabel('android-absolute-orientation')).toBe('Android absolute orientation')
     expect(qiblaHeadingSourceLabel(null)).toBe('Waiting for an absolute compass')
   })
 })

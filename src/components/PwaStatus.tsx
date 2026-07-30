@@ -6,7 +6,8 @@ import {
   getInstalledVersion,
   isPwaInstalled,
   refreshAthanApp,
-  requestPwaInstall
+  requestPwaInstall,
+  subscribeInstallPrompt
 } from '../lib/pwa'
 
 type Props = {
@@ -19,6 +20,7 @@ export default function PwaStatus({ language = 'en' }: Props) {
   const [installedVersion] = useState(getInstalledVersion)
   const [message, setMessage] = useState('')
   const [checking, setChecking] = useState(false)
+  const [installAvailable, setInstallAvailable] = useState(false)
 
   useEffect(() => {
     const onOnline = () => setOnline(true)
@@ -37,6 +39,10 @@ export default function PwaStatus({ language = 'en' }: Props) {
     }
   }, [language])
 
+  useEffect(() => subscribeInstallPrompt((prompt) => {
+    setInstallAvailable(prompt !== null)
+  }), [])
+
   useEffect(() => {
     if (!message) return
     const timeout = window.setTimeout(() => setMessage(''), 4500)
@@ -48,8 +54,7 @@ export default function PwaStatus({ language = 'en' }: Props) {
       const result = await requestPwaInstall()
       if (result === 'accepted') setMessage(t('installStarted', language))
       if (result === 'dismissed') setMessage(t('installDismissed', language))
-      if (result === 'shared') setMessage(t('shareOpened', language))
-      if (result === 'guidance') setMessage(t('installGuidance', language))
+      if (result === 'unavailable') setMessage(t('installGuidance', language))
     } catch {
       // Native share cancellation is not an app error.
     }
@@ -93,14 +98,24 @@ export default function PwaStatus({ language = 'en' }: Props) {
         />
       </dl>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={installApp}
-          className="min-h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-600"
-        >
-          {t('installAthan', language)}
-        </button>
+      {!installed && !installAvailable && (
+        <p className="mt-4 rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-xs leading-5 text-gray-300">
+          {isAppleMobileDevice()
+            ? t('iosInstallGuidance', language)
+            : t('installGuidance', language)}
+        </p>
+      )}
+
+      <div className={`mt-4 grid gap-2 ${installAvailable && !installed ? 'sm:grid-cols-2' : ''}`}>
+        {installAvailable && !installed && (
+          <button
+            type="button"
+            onClick={installApp}
+            className="min-h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-600"
+          >
+            {t('installAthan', language)}
+          </button>
+        )}
         <button
           type="button"
           onClick={updateApp}
@@ -119,6 +134,11 @@ export default function PwaStatus({ language = 'en' }: Props) {
       )}
     </section>
   )
+}
+
+function isAppleMobileDevice() {
+  if (/iPad|iPhone|iPod/i.test(navigator.userAgent)) return true
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
 }
 
 function StatusItem({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {

@@ -5,7 +5,7 @@ export type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
-export type InstallResult = 'accepted' | 'dismissed' | 'shared' | 'guidance'
+export type InstallResult = 'accepted' | 'dismissed' | 'unavailable'
 
 export const ATHAN_APP_VERSION = ATHAN_RELEASE.version
 export const ATHAN_APP_UPDATED_AT = ATHAN_RELEASE.updatedAt
@@ -61,24 +61,13 @@ export function getLastUpdateCheck(): string | null {
 }
 
 export async function requestPwaInstall(): Promise<InstallResult> {
-  if (deferredInstallPrompt) {
-    const prompt = deferredInstallPrompt
-    await prompt.prompt()
-    const choice = await prompt.userChoice
-    publishInstallPrompt(null)
-    return choice.outcome
-  }
+  if (!deferredInstallPrompt) return 'unavailable'
 
-  if (navigator.share) {
-    await navigator.share({
-      title: 'Install Athan PWA',
-      text: 'Open Athan PWA, then choose Add to Home Screen or Install App from your browser.',
-      url: window.location.origin
-    })
-    return 'shared'
-  }
-
-  return 'guidance'
+  const prompt = deferredInstallPrompt
+  await prompt.prompt()
+  const choice = await prompt.userChoice
+  publishInstallPrompt(null)
+  return choice.outcome
 }
 
 export async function refreshAthanApp(

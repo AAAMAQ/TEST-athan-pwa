@@ -1,22 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { refreshDeviceLocation, reverseGeocodeCoordinates, saveCachedLocation } from '../lib/locationStore'
 import {
-  qiblaHeadingFromOrientation,
+  isQiblaCompassSupported,
   qiblaHeadingSourceLabel,
+  startQiblaCompassEngine,
   type QiblaHeadingSource
 } from '../lib/qiblaHeading'
-
-declare global {
-  interface DeviceOrientationEvent {
-    webkitCompassHeading?: number
-  }
-  interface DeviceOrientationEventConstructor {
-    requestPermission?: () => Promise<'granted' | 'denied'>
-  }
-  interface Window {
-    DeviceOrientationEvent?: DeviceOrientationEventConstructor
-  }
-}
 
 type QiblaMode = 'simple' | 'advanced'
 type PermissionStatusText = 'unknown' | 'granted' | 'denied' | 'unavailable'
@@ -29,7 +18,6 @@ const MODE_KEY = 'athan.qibla.mode.v1'
 const HAPTICS_KEY = 'athan.qibla.haptics.v1'
 const STATUS_KEY = 'athan.qibla.status.v1'
 const ALIGNMENT_THRESHOLD = 5
-const ABSOLUTE_COMPASS_TIMEOUT_MS = 4000
 
 function bearingToKaaba(lat: number, lon: number) {
   const phi1 = (lat * Math.PI) / 180
@@ -194,7 +182,7 @@ export default function Qibla({ go }: Props) {
       typeof window.DeviceOrientationEvent.requestPermission === 'function')
     setNeedsCompassPermission(needsPermission)
 
-    if (!window.DeviceOrientationEvent) {
+    if (!isQiblaCompassSupported()) {
       setCompassStatus('unavailable')
       setCompassDetail('Compass sensors are not available in this browser. Use the numeric Qibla bearing.')
       return
@@ -206,53 +194,20 @@ export default function Qibla({ go }: Props) {
   useEffect(() => {
     if (!compassEnabled) return
 
-    let receivedRelativeOnly = false
-    let bestSourcePriority = 0
-
-    const acceptReading = (
-      event: DeviceOrientationEvent,
-      eventType: 'deviceorientation' | 'deviceorientationabsolute'
-    ) => {
-      const reading = qiblaHeadingFromOrientation(event, eventType)
-      if (!reading) {
-        if (eventType === 'deviceorientation' && typeof event.alpha === 'number' && event.absolute !== true) {
-          receivedRelativeOnly = true
-        }
-        return
+    const controller = startQiblaCompassEngine({
+      onReading(reading) {
+        setHeading(reading.heading)
+        setHeadingSource(reading.source)
+        setCompassStatus('granted')
+        setCompassDetail(`${qiblaHeadingSourceLabel(reading.source)} ready. Hold the phone flat and away from magnets or metal.`)
+      },
+      onUnavailable(detail) {
+        setCompassStatus('unavailable')
+        setCompassDetail(detail)
       }
+    })
 
-      const sourcePriority = reading.source === 'ios-compass' ? 2 : 1
-      if (sourcePriority < bestSourcePriority) return
-      bestSourcePriority = sourcePriority
-      setHeading(reading.heading)
-      setHeadingSource(reading.source)
-      setCompassStatus('granted')
-      setCompassDetail(`${qiblaHeadingSourceLabel(reading.source)} ready. Hold the phone flat and away from magnets or metal.`)
-    }
-
-    const onOrientation = (event: DeviceOrientationEvent) => {
-      acceptReading(event, 'deviceorientation')
-    }
-    const onAbsoluteOrientation = (event: DeviceOrientationEvent) => {
-      acceptReading(event, 'deviceorientationabsolute')
-    }
-
-    window.addEventListener('deviceorientation', onOrientation)
-    window.addEventListener('deviceorientationabsolute', onAbsoluteOrientation)
-
-    const timeoutId = window.setTimeout(() => {
-      if (bestSourcePriority > 0) return
-      setCompassStatus('unavailable')
-      setCompassDetail(receivedRelativeOnly
-        ? 'This browser supplied only relative motion data, which cannot identify North. Try Chrome, Safari, or Samsung Internet with motion access enabled.'
-        : 'No absolute compass heading was received. Check motion/orientation access or try another supported browser.')
-    }, ABSOLUTE_COMPASS_TIMEOUT_MS)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-      window.removeEventListener('deviceorientation', onOrientation)
-      window.removeEventListener('deviceorientationabsolute', onAbsoluteOrientation)
-    }
+    return () => controller.stop()
   }, [compassEnabled])
 
   const turn = useMemo(() => {
@@ -266,7 +221,7 @@ export default function Qibla({ go }: Props) {
   useEffect(() => {
     if (bearing === null) return
     const nextStatus = {
-      compassSupported: Boolean(window.DeviceOrientationEvent),
+      compassSupported: isQiblaCompassSupported(),
       compassPermissionNeeded: needsCompassPermission,
       compassStatus,
       locationStatus,

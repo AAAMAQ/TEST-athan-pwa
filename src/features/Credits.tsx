@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { formatDevNoteDate, loadDevNotes, type DevNote } from '../lib/devNotes'
-import { refreshAthanApp, requestPwaInstall } from '../lib/pwa'
+import { refreshAthanApp } from '../lib/pwa'
 import { ATHAN_RELEASE } from '../lib/release'
 
 type Props = {
@@ -48,26 +48,11 @@ export default function Credits({ go, backTarget }: Props) {
         await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`)
         setMessage(fallbackMessage)
       } else {
-        setMessage(`Open your browser menu to share or install Athan PWA: ${shareData.url}`)
+        setMessage(`Open your browser menu to share Athan PWA: ${shareData.url}`)
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
       setMessage('Sharing is not available right now.')
-    }
-  }
-
-  async function installApp() {
-    try {
-      const result = await requestPwaInstall()
-      if (result === 'accepted') setMessage('Install started.')
-      if (result === 'dismissed') setMessage('Install dismissed. You can try again later.')
-      if (result === 'shared') setMessage('Use your device options to add Athan PWA to your Home Screen.')
-      if (result === 'guidance') {
-        setMessage('Open your browser menu, then choose Install App or Add to Home Screen.')
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return
-      setMessage('The install options could not be opened right now.')
     }
   }
 
@@ -115,7 +100,7 @@ export default function Credits({ go, backTarget }: Props) {
           <CreditRow label="Date of Current Version" value={formatDevNoteDate(ATHAN_RELEASE.updatedAt)} />
           <CreditRow
             label="Latest Update"
-            value="v3.2.2 fixes Android Qibla headings by accepting only absolute North-referenced orientation, adds compass-source diagnostics, and documents the unified app interface."
+            value="v3.2.3 rebuilds Android Qibla heading detection around verified absolute orientation while leaving the working iPhone compass path unchanged. It also uses real browser install prompts where supported and keeps Credits focused on sharing the app."
           />
           <CreditRow label="Company" value="BiG MAQ Studio" />
         </dl>
@@ -131,24 +116,16 @@ export default function Credits({ go, backTarget }: Props) {
 
       <section className="space-y-3 rounded-lg border border-gray-700 bg-gray-800 p-4">
         <div>
-          <h2 className="text-lg font-semibold">Keep Athan PWA close</h2>
+          <h2 className="text-lg font-semibold">Share Athan PWA</h2>
           <p className="mt-1 text-sm text-gray-300">
-            Install the app when your browser offers it. Otherwise, the install action opens your device&apos;s native
-            Share flow so you can choose Add to Home Screen.
+            Send the web app link to family and friends.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={installApp}
-            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500"
-          >
-            Install Athan PWA
-          </button>
+        <div>
           <button
             type="button"
             onClick={() => shareApp()}
-            className="rounded-md bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-100 hover:bg-gray-600"
+            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500"
           >
             Share App
           </button>

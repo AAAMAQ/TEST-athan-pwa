@@ -893,7 +893,7 @@ type QiblaStoredStatus = {
   locationStatus?: string
   bearing?: number
   heading?: number | null
-  headingSource?: 'ios-compass' | 'absolute-orientation' | null
+  headingSource?: 'ios-compass' | 'android-absolute-sensor' | 'android-absolute-orientation' | null
   aligned?: boolean
 }
 
@@ -948,7 +948,8 @@ function QiblaStatusPanel() {
 
 function formatQiblaHeadingSource(source: QiblaStoredStatus['headingSource']) {
   if (source === 'ios-compass') return 'iPhone compass'
-  if (source === 'absolute-orientation') return 'Absolute device orientation'
+  if (source === 'android-absolute-sensor') return 'Android magnetic North sensor'
+  if (source === 'android-absolute-orientation') return 'Android absolute orientation'
   return 'No absolute heading recorded'
 }
 

@@ -1,5 +1,16 @@
 [
   {
+    "id": "2026-07-30-v3-2-3",
+    "date": "2026-07-30",
+    "version": "v3.2.3",
+    "title": "Dedicated Android Qibla compass engine",
+    "summary": [
+      "Rebuilt Android Qibla heading detection as a separate engine that prefers the Absolute Orientation Sensor, converts its screen-frame quaternion into a true heading, and uses only strictly absolute device-orientation events as a fallback.",
+      "Added source locking, circular smoothing, spike damping, screen-rotation compensation, and regression tests so relative readings cannot redefine the phone's current direction as North. The established iPhone compass path and the Qibla interface remain unchanged.",
+      "Updated Settings to offer installation only through a real browser-provided PWA prompt, with manual Add to Home Screen guidance when required. Credits now keeps only the Share App action."
+    ]
+  },
+  {
     "id": "2026-07-29-v3-2-2",
     "date": "2026-07-29",
     "version": "v3.2.2",

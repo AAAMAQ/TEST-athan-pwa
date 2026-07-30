@@ -135,8 +135,8 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     installStarted: 'Install started.',
     installDismissed: 'Install dismissed.',
     installedSuccessfully: 'Athan PWA is installed.',
-    shareOpened: 'The share menu is open. Choose Add to Home Screen or your browser’s install option.',
     installGuidance: 'Use your browser menu and choose Install App or Add to Home Screen.',
+    iosInstallGuidance: 'On iPhone or iPad, open the browser Share menu and choose Add to Home Screen.',
     pwaDataSafe: 'Updating refreshes the app shell only. Your local settings and worship data stay on this device.'
   },
   ar: {
@@ -266,8 +266,8 @@ const translations: Record<AppLanguage, Record<string, string>> = {
     installStarted: 'بدأ التثبيت.',
     installDismissed: 'تم إلغاء التثبيت.',
     installedSuccessfully: 'تم تثبيت Athan PWA.',
-    shareOpened: 'تم فتح قائمة المشاركة. اختر إضافة إلى الشاشة الرئيسية أو خيار التثبيت في المتصفح.',
     installGuidance: 'افتح قائمة المتصفح واختر تثبيت التطبيق أو إضافة إلى الشاشة الرئيسية.',
+    iosInstallGuidance: 'على iPhone أو iPad، افتح قائمة المشاركة في المتصفح واختر إضافة إلى الشاشة الرئيسية.',
     pwaDataSafe: 'يحدّث التحديث ملفات التطبيق فقط. تبقى إعداداتك وبيانات عبادتك المحلية على هذا الجهاز.'
   }
 }
