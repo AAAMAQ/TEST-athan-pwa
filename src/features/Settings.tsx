@@ -23,6 +23,13 @@ import {
   type PrayerSettings
 } from '../lib/prayer'
 import {
+  loadShowSunnah,
+  loadTimeFormatPreference,
+  saveShowSunnah,
+  saveTimeFormatPreference,
+  type TimeFormatPreference
+} from '../lib/preferences'
+import {
   loadSavedCities,
   loadTravelDestinationId,
   setTravelDestinationId
@@ -148,6 +155,8 @@ export default function Settings({ go }: Props) {
   const [calculationMode, setCalculationMode] = useState<CalculationMode>(initial.calculationMode)
   const [countryCode, setCountryCode] = useState(initial.countryCode)
   const [language, setLanguage] = useState<AppLanguage>(() => loadLanguage())
+  const [timeFormat, setTimeFormat] = useState<TimeFormatPreference>(() => loadTimeFormatPreference())
+  const [showSunnah, setShowSunnah] = useState(() => loadShowSunnah())
   const [savedCities] = useState(loadSavedCities)
   const [homeCityId, setHomeCityId] = useState(loadTravelDestinationId)
   const [offsetMin, setOffsetMin] = useState(() => {
@@ -257,6 +266,18 @@ export default function Settings({ go }: Props) {
     setMessage(t('languageSaved', value))
   }
 
+  function updateTimeFormat(value: TimeFormatPreference) {
+    setTimeFormat(value)
+    saveTimeFormatPreference(value)
+    setMessage(t('timeFormatSaved', language))
+  }
+
+  function updateShowSunnah(value: boolean) {
+    setShowSunnah(value)
+    saveShowSunnah(value)
+    setMessage(t('sunnahPreferenceSaved', language))
+  }
+
   function updateHomePrayerSource(cityId: string) {
     setHomeCityId(cityId)
     setTravelDestinationId(cityId)
@@ -326,10 +347,10 @@ export default function Settings({ go }: Props) {
       <section className={sectionClass}>
         <div className="mb-4">
           <h2 className="font-semibold text-white">{t('languageAndLayout', language)}</h2>
-          <p className="mt-1 text-xs leading-5 text-gray-400">{t('languageHelp', language)}</p>
+          <p className="mt-1 text-xs leading-5 text-gray-400">{t('preferencesHelp', language)}</p>
         </div>
         <label className="block text-sm font-medium text-gray-300" htmlFor="app-language">
-          {t('languageAndLayout', language)}
+          {t('language', language)}
         </label>
         <select
           id="app-language"
@@ -341,6 +362,34 @@ export default function Settings({ go }: Props) {
             <option key={key} value={key}>{LANGUAGE_LABELS[key]}</option>
           ))}
         </select>
+
+        <label className="mt-4 block text-sm font-medium text-gray-300" htmlFor="time-format">
+          {t('timeFormat', language)}
+        </label>
+        <select
+          id="time-format"
+          className={selectClass}
+          value={timeFormat}
+          onChange={(event) => updateTimeFormat(event.target.value as TimeFormatPreference)}
+        >
+          <option value="device">{t('deviceDefault', language)}</option>
+          <option value="12h">{t('amPm', language)}</option>
+          <option value="24h">{t('twentyFourHour', language)}</option>
+        </select>
+        <p className="mt-2 text-xs leading-5 text-gray-400">{t('timeFormatHelp', language)}</p>
+
+        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-md border border-gray-700 bg-gray-950/60 p-3">
+          <input
+            type="checkbox"
+            checked={showSunnah}
+            onChange={(event) => updateShowSunnah(event.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-teal-500"
+          />
+          <span>
+            <span className="block text-sm font-medium text-gray-200">{t('showSunnah', language)}</span>
+            <span className="mt-1 block text-xs leading-5 text-gray-400">{t('showSunnahHelp', language)}</span>
+          </span>
+        </label>
       </section>
 
       <section className={sectionClass}>

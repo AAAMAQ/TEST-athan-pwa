@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchSurah, fetchSurahs } from '../lib/quran'
 import { loadQuranProgress, markAyahRead, toggleFavoriteSurah, type QuranProgress } from '../lib/quranProgress'
 import { isQuranTranslation, type QuranTranslation } from '../lib/quranProviders'
+import { formatAppTime } from '../lib/preferences'
 
 type SurahItem = {
   number: number
@@ -68,7 +69,7 @@ function formatRecentDate(value: string) {
   if (Number.isNaN(date.getTime())) return 'Recently'
   const today = new Date()
   if (date.toDateString() === today.toDateString()) {
-    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    return formatAppTime(date)
   }
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }

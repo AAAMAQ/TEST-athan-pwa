@@ -4,15 +4,12 @@ import { loadLanguage, t, type AppLanguage } from '../lib/i18n'
 import { nextPrayer } from '../lib/prayer'
 import { getPrimaryPrayerContext, loadPrimarySavedCity } from '../lib/primaryPrayerSource'
 import PrayerMonth from './PrayerMonth.tsx'
+import { formatAppTime } from '../lib/preferences'
 
 type PrayerKey = 'fajr' | 'sunrise' | 'dhuhr' | 'asr' | 'maghrib' | 'isha'
 type PrayerTimesState = Partial<Record<PrayerKey, Date>>
 
 const PRAYER_ORDER: PrayerKey[] = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha']
-
-function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-}
 
 export default function PrayerTimes() {
   const [times, setTimes] = useState<PrayerTimesState>({})
@@ -113,7 +110,7 @@ export default function PrayerTimes() {
             <div>
               <p className="text-xs font-semibold uppercase text-gray-400">Next Prayer</p>
               <h3 className="mt-1 text-2xl font-bold text-teal-300">{prayerLabels[nextKey]}</h3>
-              <p className="mt-1 text-sm text-gray-300">{formatTime(next.time)}</p>
+              <p className="mt-1 text-sm text-gray-300">{formatAppTime(next.time)}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">Time remaining</p>
@@ -141,7 +138,7 @@ export default function PrayerTimes() {
                     {key === 'sunrise' && <p className="text-xs text-gray-500">Solar time</p>}
                   </div>
                   <time className={`text-lg font-semibold ${isNext ? 'text-teal-300' : 'text-gray-200'}`}>
-                    {time ? formatTime(time) : '—'}
+                    {time ? formatAppTime(time) : '—'}
                   </time>
                 </div>
               )

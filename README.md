@@ -59,12 +59,12 @@ https://github.com/AAAMAQ/TEST-athan-pwa
 
 ## Current Version
 
-**v3.2.3**
+**v3.2.4**
 
-This version rebuilds Android Qibla heading detection as a separate engine using verified absolute orientation,
-screen-aware quaternion calculations, source locking, and circular smoothing, while leaving the working iPhone
-compass path unchanged. It also uses the browser's real PWA installation prompt where supported, gives manual
-Add to Home Screen guidance elsewhere, and keeps Credits focused on sharing the app.
+This version adds consent-based sharing for non-personal defaults and explicit sharing for one selected City or
+Masjid profile, with clear privacy boundaries for worship data. Preferences now control the app-wide AM/PM or
+24-hour clock and optionally show a Sunnahs tile without changing the five obligatory-prayer total. Home now moves
+from Fajr to Sunrise at the correct time and updates the prayer window while the app remains open.
 
 ---
 
@@ -519,5 +519,4 @@ Our motto is:
 May Allah accept it, make it beneficial, and allow it to help people remember their prayers on time.
 
 ---
-
 

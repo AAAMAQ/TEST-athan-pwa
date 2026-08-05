@@ -3,14 +3,11 @@ import { refreshDeviceLocation } from '../lib/locationStore'
 import { computePrayerTimes, loadSettings } from '../lib/prayer'
 import { formatSavedCityLabel, loadPrimarySavedCity } from '../lib/primaryPrayerSource'
 import { prayerTimesForSavedCity } from '../lib/savedCities'
+import { formatAppTime } from '../lib/preferences'
 
 const PRAYERS = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const
 type PrayerName = typeof PRAYERS[number]
 type Row = { date: number } & Record<PrayerName, string>
-
-function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-}
 
 export default function PrayerMonth() {
   const today = new Date()
@@ -40,12 +37,12 @@ export default function PrayerMonth() {
           }, date, loadSettings())
         results.push({
           date: day,
-          Fajr: formatTime(times.fajr),
-          Sunrise: formatTime(times.sunrise),
-          Dhuhr: formatTime(times.dhuhr),
-          Asr: formatTime(times.asr),
-          Maghrib: formatTime(times.maghrib),
-          Isha: formatTime(times.isha)
+          Fajr: formatAppTime(times.fajr),
+          Sunrise: formatAppTime(times.sunrise),
+          Dhuhr: formatAppTime(times.dhuhr),
+          Asr: formatAppTime(times.asr),
+          Maghrib: formatAppTime(times.maghrib),
+          Isha: formatAppTime(times.isha)
         })
       }
       if (!cancelled) setRows(results)

@@ -3,11 +3,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { computePrayerTimes } from '../lib/prayer'
 import { refreshDeviceLocation } from '../lib/locationStore'
 import { calculateSalahInsights, type SalahLogStore } from '../lib/salahInsights'
+import { formatAppTime, loadShowSunnah } from '../lib/preferences'
 
-type PrayerKey = 'Fajr' | 'Dhuhr' | 'Asr' | 'Maghrib' | 'Isha' 
-const PRAYERS: PrayerKey[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', ] as const
+type ObligatoryPrayerKey = 'Fajr' | 'Dhuhr' | 'Asr' | 'Maghrib' | 'Isha'
+type TrackerKey = ObligatoryPrayerKey | 'Sunnah'
+const PRAYERS: ObligatoryPrayerKey[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha']
 
-type DayLog = Partial<Record<PrayerKey, boolean>>
+type DayLog = Partial<Record<TrackerKey, boolean>>
 type LogStore = Record<string, DayLog> // key: YYYY-MM-DD
 
 const STORAGE_KEY = 'salahLogV1'
@@ -51,7 +53,8 @@ export default function SalahTracker() {
   const [store, setStore] = useState<LogStore>(() => loadStore())
   const [month, setMonth] = useState<Date>(() => startOfMonth(new Date()))
   const [selected, setSelected] = useState<Date>(() => new Date())
-  const [todayTimes, setTodayTimes] = useState<{[K in Exclude<PrayerKey,'Witr'>]?: string}>({})
+  const [todayTimes, setTodayTimes] = useState<Partial<Record<ObligatoryPrayerKey, string>>>({})
+  const [showSunnah] = useState(() => loadShowSunnah())
 
   // persist
   useEffect(() => { saveStore(store) }, [store])
@@ -63,13 +66,12 @@ export default function SalahTracker() {
         const loc = await refreshDeviceLocation()
         if (!loc.location) return
         const pt = computePrayerTimes({ latitude: loc.location.latitude, longitude: loc.location.longitude })
-        const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         setTodayTimes({
-          Fajr: fmt(pt.fajr),
-          Dhuhr: fmt(pt.dhuhr),
-          Asr: fmt(pt.asr),
-          Maghrib: fmt(pt.maghrib),
-          Isha: fmt(pt.isha)
+          Fajr: formatAppTime(pt.fajr, { hour: '2-digit' }),
+          Dhuhr: formatAppTime(pt.dhuhr, { hour: '2-digit' }),
+          Asr: formatAppTime(pt.asr, { hour: '2-digit' }),
+          Maghrib: formatAppTime(pt.maghrib, { hour: '2-digit' }),
+          Isha: formatAppTime(pt.isha, { hour: '2-digit' })
         })
       } catch { /* ignore */ }
     })()
@@ -88,7 +90,7 @@ export default function SalahTracker() {
     return n
   }
 
-  function toggle(prayer: PrayerKey) {
+  function toggle(prayer: TrackerKey) {
     setStore(prev => {
       const next = { ...prev }
       const cur = { ...(next[selKey] || {}) }
@@ -100,7 +102,7 @@ export default function SalahTracker() {
   function markAll(val: boolean) {
     setStore(prev => {
       const next = { ...prev }
-      const cur: DayLog = {}
+      const cur: DayLog = val ? { ...(next[selKey] || {}) } : {}
       for (const p of PRAYERS) cur[p] = val
       next[selKey] = cur
       return next
@@ -111,7 +113,7 @@ export default function SalahTracker() {
   function nextMonth() { setMonth(m => addMonths(m, +1)) }
   function goToday() { const t = new Date(); setMonth(startOfMonth(t)); setSelected(t) }
 
-  // heat color: 0..6 mapped to gray -> teal
+  // heat color: the five obligatory prayers mapped from gray to teal.
   function heatClass(n: number, inMonth: boolean) {
     const base = inMonth ? '' : 'opacity-40'
     switch (n) {
@@ -121,7 +123,6 @@ export default function SalahTracker() {
       case 3: return `bg-teal-700 ${base}`
       case 4: return `bg-teal-600 ${base}`
       case 5: return `bg-teal-500 ${base}`
-      case 6: return `bg-teal-400 text-black ${base}`
       default: return `bg-gray-800 ${base}`
     }
   }
@@ -159,7 +160,7 @@ export default function SalahTracker() {
               key={i}
               onClick={() => setSelected(d)}
               className={`aspect-square rounded flex flex-col items-center justify-center ${heatClass(n, inMonth)} ${isSelected ? 'ring-2 ring-yellow-300' : ''}`}
-              title={`${d.toDateString()} • ${n}/6`}
+              title={`${d.toDateString()} • ${n}/5`}
             >
               <div className="text-[10px]">{d.getDate()}</div>
               <div className="text-[10px]">{n}/5</div>
@@ -182,7 +183,7 @@ export default function SalahTracker() {
         {sameDay(selected, new Date()) && (
           <div className="text-xs text-gray-400">
             {['Fajr','Dhuhr','Asr','Maghrib','Isha'].map((p) => {
-              const k = p as Exclude<PrayerKey, 'Witr'>
+              const k = p as ObligatoryPrayerKey
               const t = todayTimes[k]
               return t ? <span key={k} className="mr-3">{k}: {t}</span> : null
             })}
@@ -190,7 +191,7 @@ export default function SalahTracker() {
         )}
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {PRAYERS.map(p => {
+          {[...PRAYERS, ...(showSunnah ? ['Sunnah' as const] : [])].map(p => {
             const on = !!dayLog[p]
             return (
               <button
@@ -198,7 +199,7 @@ export default function SalahTracker() {
                 onClick={() => toggle(p)}
                 className={`rounded px-3 py-3 font-semibold border ${on ? 'bg-teal-600 hover:bg-teal-500 border-teal-500' : 'bg-gray-900 hover:bg-gray-700 border-gray-700'}`}
               >
-                {p} {on ? '✓' : ''}
+                {p === 'Sunnah' ? 'Sunnahs' : p} {on ? '✓' : ''}
               </button>
             )
           })}

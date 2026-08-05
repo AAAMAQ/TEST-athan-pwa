@@ -19,7 +19,9 @@ import BackupRestore from './features/BackupRestore'
 import RamadanMode from './features/RamadanMode'
 import SavedCities from './features/SavedCities'
 import Onboarding from './features/Onboarding'
+import SharedDefaultsPrompt from './components/SharedDefaultsPrompt'
 import { loadLanguage, t, type AppLanguage } from './lib/i18n'
+import { parseSharedDefaultsUrl, type SharedDefaults } from './lib/sharedDefaults'
 import { PRIMARY_TABS, type Screen, type Tab } from './types/nav'
 
 const primaryTabs = PRIMARY_TABS
@@ -29,6 +31,9 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('Home')
   const [history, setHistory] = useState<Screen[]>([])
   const [language, setLanguage] = useState<AppLanguage>(() => loadLanguage())
+  const [sharedDefaults, setSharedDefaults] = useState<SharedDefaults | null>(() => (
+    typeof window === 'undefined' ? null : parseSharedDefaultsUrl(window.location.href)
+  ))
   const mainRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -164,6 +169,9 @@ export default function App() {
           </button>
         ))}
       </nav>
+      {sharedDefaults && (
+        <SharedDefaultsPrompt defaults={sharedDefaults} onClose={() => setSharedDefaults(null)} />
+      )}
     </div>
   )
 }

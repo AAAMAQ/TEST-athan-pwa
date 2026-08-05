@@ -1,5 +1,6 @@
 import { computePrayerTimes, type PrayerSettings } from './prayer'
 import { PRAYER_CORRECTION_KEYS, applyCorrections, formatSignedCorrection, type PrayerTimeCorrections } from './prayerCorrections'
+import { formatAppTime } from './preferences'
 
 export type TimetableRow = {
   date: string
@@ -113,5 +114,5 @@ function formatDate(date: Date) {
 }
 
 function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return formatAppTime(date, { hour: '2-digit' })
 }

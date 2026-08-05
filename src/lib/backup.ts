@@ -11,6 +11,8 @@ export const ATHAN_LOCAL_STORAGE_KEYS = [
   'athan.iqama.settings.v1',
   'athan.iqama.jumuahReminder.v1',
   'athan.language.v1',
+  'athan.preference.timeFormat.v1',
+  'athan.preference.showSunnah.v1',
   'athan.engine.locationCache.v2',
   'athan.location.cache.v1',
   'athan.masjid.profiles.v1',

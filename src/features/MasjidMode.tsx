@@ -10,6 +10,7 @@ import {
   type MasjidProfile
 } from '../lib/masjid'
 import { loadSavedCities } from '../lib/savedCities'
+import { buildMasjidProfileText, shareProfileText } from '../lib/profileSharing'
 
 type Props = {
   go?: (screen: string) => void
@@ -114,6 +115,20 @@ export default function MasjidMode({ go }: Props) {
   function goBack() {
     if (go) go('More')
     else window.location.hash = '#More'
+  }
+
+  async function shareMasjidProfile() {
+    if (!selected) return
+    const result = await shareProfileText(
+      `Athan PWA masjid profile — ${selected.name || 'Masjid'}`,
+      buildMasjidProfileText(selected)
+    )
+    if (result === 'cancelled') return
+    setMessage(result === 'shared'
+      ? 'Masjid profile shared.'
+      : result === 'copied'
+        ? 'Masjid profile copied to the clipboard.'
+        : 'Profile sharing is not available in this browser.')
   }
 
   return (
@@ -265,8 +280,14 @@ export default function MasjidMode({ go }: Props) {
             <textarea value={selected.notes} onChange={(event) => updateField('notes', event.target.value)} rows={3} className="w-full rounded bg-gray-900 border border-gray-700 px-3 py-2" />
           </label>
 
-          <div className="grid gap-2 sm:grid-cols-3">
+          <p className="rounded border border-amber-900/70 bg-amber-950/30 p-3 text-xs leading-5 text-amber-100">
+            Sharing this profile includes its masjid name, city, address or location note, Iqama rules, Jumu’ah
+            schedule, and notes. Review those fields before sharing.
+          </p>
+
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <button type="button" onClick={saveProfile} className="rounded bg-teal-600 hover:bg-teal-500 px-4 py-3 font-semibold">Save</button>
+            <button type="button" onClick={shareMasjidProfile} className="rounded border border-teal-700 bg-teal-950/40 px-4 py-3 font-semibold text-teal-200 hover:bg-teal-900/60">Share Masjid Profile</button>
             <button type="button" onClick={() => removeProfile(selected.id)} className="rounded bg-red-900/70 hover:bg-red-800 px-4 py-3 font-semibold">Delete Profile</button>
             <button type="button" onClick={goBack} className="rounded bg-gray-700 hover:bg-gray-600 px-4 py-3 font-semibold">Back</button>
           </div>

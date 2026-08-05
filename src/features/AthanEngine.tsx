@@ -10,6 +10,7 @@ import {
 } from '../lib/savedCities'
 import { formatSignedCorrection, PRAYER_CORRECTION_KEYS } from '../lib/prayerCorrections'
 import { getCountryPrayerConfig } from '../data/countryPrayerMethods'
+import { effectiveTimeFormat } from '../lib/preferences'
 
 type Props = {
   go?: (screen: string) => void
@@ -177,7 +178,7 @@ export default function AthanEngine({ go }: Props) {
   const [method, setMethod] = useState<EngineMethod>('MWL')
   const [madhab, setMadhab] = useState<EngineMadhab>('Shafi')
   const [reminderMinutes, setReminderMinutes] = useState(10)
-  const [timeFormat, setTimeFormat] = useState<TimeFormat>('24h')
+  const [timeFormat] = useState<TimeFormat>(() => effectiveTimeFormat())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -489,32 +490,9 @@ export default function AthanEngine({ go }: Props) {
 
           <div className="space-y-1 text-sm">
             <span className="block font-semibold">Time format</span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setTimeFormat('24h')}
-                aria-pressed={timeFormat === '24h'}
-                className={`rounded border px-3 py-2 text-white ${
-                  timeFormat === '24h'
-                    ? 'border-teal-400 bg-teal-700'
-                    : 'border-gray-700 bg-gray-900 hover:bg-gray-700'
-                }`}
-              >
-                {timeFormat === '24h' ? '✓ ' : ''}24h
-              </button>
-              <button
-                type="button"
-                onClick={() => setTimeFormat('12h')}
-                aria-pressed={timeFormat === '12h'}
-                className={`rounded border px-3 py-2 text-white ${
-                  timeFormat === '12h'
-                    ? 'border-teal-400 bg-teal-700'
-                    : 'border-gray-700 bg-gray-900 hover:bg-gray-700'
-                }`}
-              >
-                {timeFormat === '12h' ? '✓ ' : ''}AM/PM
-              </button>
-            </div>
+            <p className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-gray-300">
+              {timeFormat === '12h' ? 'AM/PM' : '24-hour'} · Change in Settings → Preferences
+            </p>
           </div>
         </div>
 

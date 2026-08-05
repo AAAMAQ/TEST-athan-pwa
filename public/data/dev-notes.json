@@ -1,5 +1,16 @@
 [
   {
+    "id": "2026-08-05-v3-2-4",
+    "date": "2026-08-05",
+    "version": "v3.2.4",
+    "title": "Private sharing and daily preferences",
+    "summary": [
+      "Added Share Your Defaults beside Share App. Shared links use a strict allowlist for prayer calculation, language, clock format, optional Sunnahs visibility, and reminder defaults; recipients review the contents before applying them, while Salah and Ramadan records, Quran activity, locations, saved profiles, and other personal data remain excluded.",
+      "Added explicit Share City Profile and Share Masjid Profile actions inside the selected profile. City shares identify the location and calculation configuration without embedding imported yearly timetable rows, while Masjid shares include the selected address or location note, Iqama rules, Jumu’ah slots, and notes with an on-screen review warning.",
+      "Renamed Language and layout to Preferences, added device-default, AM/PM, and 24-hour clock choices across the app, and added an optional Sunnahs tile that never changes the five obligatory-prayer completion total. Home now treats Sunrise as the state after Fajr and refreshes its prayer window while open."
+    ]
+  },
+  {
     "id": "2026-07-30-v3-2-3",
     "date": "2026-07-30",
     "version": "v3.2.3",

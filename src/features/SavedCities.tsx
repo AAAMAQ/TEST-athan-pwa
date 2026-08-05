@@ -24,6 +24,8 @@ import {
   type SavedCity
 } from '../lib/savedCities'
 import { buildTimetableCsv, buildTimetableText, downloadTextFile, shareTimetable } from '../lib/timetableExport'
+import { formatAppTime } from '../lib/preferences'
+import { buildSavedCityProfileText, shareProfileText } from '../lib/profileSharing'
 
 type Props = {
   go?: (screen: string) => void
@@ -184,6 +186,20 @@ export default function SavedCities({ go }: Props) {
   async function shareText() {
     if (!selected) return
     setMessage(await shareTimetable(buildTimetableText(timetableOptions(selected, fromDate, toDate))))
+  }
+
+  async function shareCityProfile() {
+    if (!selected) return
+    const result = await shareProfileText(
+      `Athan PWA city profile — ${selected.name || selected.city || 'Saved city'}`,
+      buildSavedCityProfileText(selected)
+    )
+    if (result === 'cancelled') return
+    setMessage(result === 'shared'
+      ? 'City profile shared.'
+      : result === 'copied'
+        ? 'City profile copied to the clipboard.'
+        : 'Profile sharing is not available in this browser.')
   }
 
   return (
@@ -350,8 +366,13 @@ export default function SavedCities({ go }: Props) {
             <button type="button" onClick={exportIcs} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 font-semibold">Export Athan ICS</button>
             <button type="button" onClick={exportCsv} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 font-semibold">Export CSV</button>
             <button type="button" onClick={shareText} className="rounded bg-gray-700 hover:bg-gray-600 px-3 py-2 font-semibold">Share Text</button>
+            <button type="button" onClick={shareCityProfile} className="rounded border border-teal-700 bg-teal-950/40 px-3 py-2 font-semibold text-teal-200 hover:bg-teal-900/60">Share City Profile</button>
             <button type="button" onClick={removeSelected} className="rounded bg-red-900/70 hover:bg-red-800 px-3 py-2 font-semibold">Remove City</button>
           </div>
+          <p className="rounded border border-amber-900/70 bg-amber-950/30 p-3 text-xs leading-5 text-amber-100">
+            Sharing this profile includes its city, coordinates, calculation settings, corrections, and notes.
+            Imported yearly timetable rows are not included. Review the selected profile before sharing.
+          </p>
         </section>
       )}
 
@@ -453,7 +474,7 @@ function formatDate(date: Date) {
 }
 
 function fmt(date: Date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return formatAppTime(date, { hour: '2-digit' })
 }
 
 function safeFile(value: string) {

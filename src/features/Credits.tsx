@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { formatDevNoteDate, loadDevNotes, type DevNote } from '../lib/devNotes'
 import { refreshAthanApp } from '../lib/pwa'
 import { ATHAN_RELEASE } from '../lib/release'
+import { createSharedDefaultsUrl } from '../lib/sharedDefaults'
 
 type Props = {
   go?: (screen: string) => void
@@ -56,6 +57,30 @@ export default function Credits({ go, backTarget }: Props) {
     }
   }
 
+  async function shareDefaults() {
+    const url = createSharedDefaultsUrl(window.location.href)
+    const shareData = {
+      title: 'Athan PWA defaults',
+      text: 'Apply my non-personal Athan PWA prayer and app defaults. Worship history, Quran progress, and location data are not included.',
+      url
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+        setMessage('Shared your non-personal defaults.')
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url)
+        setMessage('Defaults link copied. No personal worship data was included.')
+      } else {
+        setMessage('Sharing is not available in this browser.')
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      setMessage('Your defaults could not be shared right now.')
+    }
+  }
+
   async function updateApp() {
     await refreshAthanApp((status) => {
       if (status === 'checking') setUpdateStatus('Checking for update…')
@@ -100,7 +125,7 @@ export default function Credits({ go, backTarget }: Props) {
           <CreditRow label="Date of Current Version" value={formatDevNoteDate(ATHAN_RELEASE.updatedAt)} />
           <CreditRow
             label="Latest Update"
-            value="v3.2.3 rebuilds Android Qibla heading detection around verified absolute orientation while leaving the working iPhone compass path unchanged. It also uses real browser install prompts where supported and keeps Credits focused on sharing the app."
+            value="v3.2.4 adds privacy-safe default sharing, selected City and Masjid profile sharing, app-wide clock preferences, an optional Sunnahs tracker tile, and the corrected post-Fajr Sunrise state."
           />
           <CreditRow label="Company" value="BiG MAQ Studio" />
         </dl>
@@ -121,7 +146,7 @@ export default function Credits({ go, backTarget }: Props) {
             Send the web app link to family and friends.
           </p>
         </div>
-        <div>
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => shareApp()}
@@ -129,7 +154,18 @@ export default function Credits({ go, backTarget }: Props) {
           >
             Share App
           </button>
+          <button
+            type="button"
+            onClick={shareDefaults}
+            className="rounded-md border border-teal-600 bg-gray-900 px-4 py-2 text-sm font-semibold text-teal-200 hover:bg-teal-950"
+          >
+            Share Your Defaults
+          </button>
         </div>
+        <p className="text-xs leading-5 text-gray-400">
+          Shared defaults include prayer calculation and general preferences only. Your Salah and Ramadan trackers,
+          Quran activity, locations, and other personal data are never shared.
+        </p>
         {message && (
           <p role="status" className="rounded-md bg-gray-900 px-3 py-2 text-sm text-teal-300">
             {message}

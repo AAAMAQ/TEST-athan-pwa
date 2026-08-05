@@ -35,6 +35,7 @@ import {
 } from '../lib/iqama'
 import { loadMasjidProfiles, updateMasjidProfile, type MasjidProfile } from '../lib/masjid'
 import { loadSavedCities, prayerTimesForSavedCity } from '../lib/savedCities'
+import { effectiveTimeFormat } from '../lib/preferences'
 
 type Props = {
   go?: (screen: string) => void
@@ -170,7 +171,7 @@ function iqamaToMasjidRule(rule: IqamaSettings[IqamaPrayerName]) {
 
 export default function Iqama({ go }: Props) {
   const [settings, setSettings] = useState<IqamaSettings>(() => loadIqamaSettings())
-  const [timeFormat, setTimeFormat] = useState<IqamaTimeFormat>('12h')
+  const [timeFormat] = useState<IqamaTimeFormat>(() => effectiveTimeFormat())
   const [athanTimes, setAthanTimes] = useState<AthanTimesForIqama>({})
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null)
   const [date] = useState(() => new Date())
@@ -442,24 +443,9 @@ function goBack() {
             <p className="text-sm text-gray-400">{status}</p>
           </div>
 
-          <div className="flex rounded-lg border border-gray-700 bg-gray-900 p-1 text-sm">
-            <button
-              type="button"
-              onClick={() => setTimeFormat('12h')}
-              aria-pressed={timeFormat === '12h'}
-              className={`rounded px-3 py-2 ${timeFormat === '12h' ? 'bg-teal-700 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
-            >
-              {timeFormat === '12h' ? '✓ ' : ''}AM/PM
-            </button>
-            <button
-              type="button"
-              onClick={() => setTimeFormat('24h')}
-              aria-pressed={timeFormat === '24h'}
-              className={`rounded px-3 py-2 ${timeFormat === '24h' ? 'bg-teal-700 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
-            >
-              {timeFormat === '24h' ? '✓ ' : ''}24h
-            </button>
-          </div>
+          <p className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs text-gray-300">
+            Time format: {timeFormat === '12h' ? 'AM/PM' : '24-hour'} · Change it in Settings → Preferences
+          </p>
         </div>
 
         <div className="overflow-x-auto">

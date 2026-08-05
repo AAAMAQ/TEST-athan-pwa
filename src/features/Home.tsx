@@ -5,19 +5,9 @@ import { formatHijri } from '../lib/hijri'
 import { loadLanguage, t, type AppLanguage } from '../lib/i18n'
 import { getPrimaryPrayerContext, loadPrimarySavedCity } from '../lib/primaryPrayerSource'
 import { getRamadanDay, getRamadanStatus, loadRamadanSettings } from '../lib/ramadan'
+import { formatAppTime } from '../lib/preferences'
+import { getPrayerProgress, getPrayerWindow, type PrayerWindow } from '../lib/prayerWindow'
 
-
-const fmtTime = (date: Date, timezone?: string) => {
-  try {
-    return date.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: timezone
-    })
-  } catch {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-}
 
 const msUntilNextMidnight = () => {
   const now = new Date()
@@ -32,6 +22,7 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
   const [savedCity] = useState(loadPrimarySavedCity)
   const [locationLabel, setLocationLabel] = useState('Location not available')
   const [prayerWindow, setPrayerWindow] = useState<PrayerWindow | null>(null)
+  const [prayerSchedule, setPrayerSchedule] = useState<Awaited<ReturnType<typeof getPrimaryPrayerContext>> | null>(null)
   const [nextAt, setNextAt] = useState<string>('') // human local time for next prayer
   const [countdown, setCountdown] = useState('—:—:—')
   const [ramadanDay] = useState(() => {
@@ -68,10 +59,8 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
       try {
         const context = await getPrimaryPrayerContext()
         if (cancelled) return
-        const window = getPrayerWindow(context.times, new Date(), context.nextFajr)
         setLocationLabel(context.locationLabel)
-        setPrayerWindow(window)
-        setNextAt(fmtTime(window.nextTime, context.savedCity?.timezone))
+        setPrayerSchedule(context)
       } catch {
         if (!cancelled) setLocationLabel('Location not available')
         // silently ignore; UI will show dashes
@@ -79,6 +68,21 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
     })()
     return () => { cancelled = true }
   }, [savedCity])
+
+  useEffect(() => {
+    if (!prayerSchedule) return
+    const updatePrayerWindow = () => {
+      const window = getPrayerWindow(prayerSchedule.times, new Date(), prayerSchedule.nextFajr)
+      setPrayerWindow(window)
+      setNextAt(formatAppTime(window.nextTime, {
+        hour: '2-digit',
+        timezone: prayerSchedule.savedCity?.timezone
+      }))
+    }
+    updatePrayerWindow()
+    const interval = window.setInterval(updatePrayerWindow, 30_000)
+    return () => window.clearInterval(interval)
+  }, [prayerSchedule])
 
   // live countdown
   useEffect(() => {
@@ -158,61 +162,6 @@ export default function Home({ go }: { go: (tab: Screen) => void }) {
       </div>
     </div>
   )
-}
-
-type PrayerWindow = {
-  currentName: string
-  currentTime: Date
-  nextName: string
-  nextTime: Date
-}
-
-function getPrayerWindow(times: PrayerTimesShape, now = new Date(), nextFajr?: Date): PrayerWindow {
-  const prayers = [
-    { name: 'Fajr', time: times.fajr },
-    { name: 'Dhuhr', time: times.dhuhr },
-    { name: 'Asr', time: times.asr },
-    { name: 'Maghrib', time: times.maghrib },
-    { name: 'Isha', time: times.isha }
-  ]
-  const nextIndex = prayers.findIndex((prayer) => now < prayer.time)
-  if (nextIndex === 0) {
-    return {
-      currentName: 'Isha',
-      currentTime: new Date(times.isha.getTime() - 24 * 60 * 60 * 1000),
-      nextName: prayers[0].name,
-      nextTime: prayers[0].time
-    }
-  }
-  if (nextIndex > 0) {
-    return {
-      currentName: prayers[nextIndex - 1].name,
-      currentTime: prayers[nextIndex - 1].time,
-      nextName: prayers[nextIndex].name,
-      nextTime: prayers[nextIndex].time
-    }
-  }
-  return {
-    currentName: 'Isha',
-    currentTime: times.isha,
-    nextName: 'Fajr',
-    nextTime: nextFajr ?? new Date(times.fajr.getTime() + 24 * 60 * 60 * 1000)
-  }
-}
-
-type PrayerTimesShape = {
-  fajr: Date
-  dhuhr: Date
-  asr: Date
-  maghrib: Date
-  isha: Date
-}
-
-function getPrayerProgress(window: PrayerWindow | null) {
-  if (!window) return 0
-  const duration = window.nextTime.getTime() - window.currentTime.getTime()
-  if (duration <= 0) return 0
-  return Math.min(100, Math.max(0, ((Date.now() - window.currentTime.getTime()) / duration) * 100))
 }
 
 function HomeButton({ label, onClick }: { label: string; onClick: () => void }) {
